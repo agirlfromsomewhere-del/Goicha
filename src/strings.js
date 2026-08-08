@@ -157,7 +157,7 @@ export const t = {
     backToDict: '← Dictionary',
     heading: 'Check how a phrase is used',
     intro:
-      "Checks comments on a large, topically varied sample of Japanese YouTube videos for a phrase (trending videos plus recent videos across many categories, not just one narrow trending list). It stops once it finds 10 matching comments, or once it's checked everything in the sample, whichever comes first. A low or zero count doesn't necessarily mean a phrase is unnatural — it may just not have come up in this sample.",
+      "Checks comments on Japanese YouTube videos for a phrase — trending videos, recent videos across many categories, and a curated list of long-form talk/discussion channels known for natural conversational comments. It keeps digging deeper (checking more videos) until it finds 10 matching comments or genuinely runs out of places to look, so rarer phrases may take longer to check than common ones. A low or zero count doesn't necessarily mean a phrase is unnatural — it may just not have come up before the search stopped.",
     phraseLabel: 'Phrase to check',
     checkButton: 'Check usage',
     apiKeyMissing: 'You need to add a YouTube API key before this can search. See instructions below.',
@@ -167,12 +167,14 @@ export const t = {
     apiKeyHelp:
       'This feature needs your own free YouTube Data API key so it can search on your behalf (there is a small daily free quota from Google). Go to console.cloud.google.com, create a project, enable "YouTube Data API v3", create an API key under Credentials, and paste it below. The key is stored only on this device and sent only to Google, never anywhere else.',
     searching: 'Checking videos...',
-    searchProgress: (done, total, matchCount) =>
-      `Checked ${done} of ${total} videos, ${matchCount} match${matchCount === 1 ? '' : 'es'} so far...`,
+    searchProgress: (done, matchCount) =>
+      `Checked ${done} video${done === 1 ? '' : 's'} so far, ${matchCount} match${matchCount === 1 ? '' : 'es'} found...`,
     resultCount: (count, videoCount) =>
       `Found this phrase in ${count} comment${count === 1 ? '' : 's'} — stopped after checking ${videoCount} video${videoCount === 1 ? '' : 's'}.`,
     exhaustedSome: (count, videoCount) =>
-      `I checked all ${videoCount} available videos and only found this phrase in ${count} comment${count === 1 ? '' : 's'} — not quite enough to be confident, but here's what turned up.`,
+      `I checked ${videoCount} videos — everywhere I know to look — and only found this phrase in ${count} comment${count === 1 ? '' : 's'} — not quite enough to be confident, but here's what turned up.`,
+    quotaExceeded: (count, videoCount) =>
+      `Ran out of today's free YouTube search quota after checking ${videoCount} videos${count > 0 ? ` (found this phrase in ${count} comment${count === 1 ? '' : 's'} before that happened)` : ''}. Try again after the quota resets — daily, around midnight Pacific time.`,
     exhaustedNone: (videoCount) =>
       `I looked through all ${videoCount} available videos but didn't find this phrase in any comments. That doesn't prove it's unnatural — just that it didn't come up in this search.`,
     examplesHeading: 'Example comments',

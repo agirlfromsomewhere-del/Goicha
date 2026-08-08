@@ -97,17 +97,19 @@ export function renderUsageCheck(container) {
     announce(t.usageCheck.searching);
 
     try {
-      const { matches, videosChecked, reachedTarget } = await checkPhraseUsage(phrase, apiKey, {
-        onProgress: (done, total, matchCount) => {
-          status.textContent = t.usageCheck.searchProgress(done, total, matchCount);
+      const { matches, videosChecked, reachedTarget, quotaExceeded } = await checkPhraseUsage(phrase, apiKey, {
+        onProgress: (done, matchCount) => {
+          status.textContent = t.usageCheck.searchProgress(done, matchCount);
           // Only announce every 20 videos so VoiceOver isn't interrupted
           // constantly - the visible text still updates every time.
-          if (done % 20 === 0 || done === total) announce(status.textContent);
+          if (done % 20 === 0) announce(status.textContent);
         },
       });
 
       let message;
-      if (reachedTarget) {
+      if (quotaExceeded) {
+        message = t.usageCheck.quotaExceeded(matches.length, videosChecked);
+      } else if (reachedTarget) {
         message = t.usageCheck.resultCount(matches.length, videosChecked);
       } else if (matches.length > 0) {
         message = t.usageCheck.exhaustedSome(matches.length, videosChecked);
