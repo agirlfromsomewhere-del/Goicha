@@ -2,6 +2,7 @@ import { ensureIndexLoaded, search } from '../dict.js';
 import { announce, focusElement } from '../a11y.js';
 import { t } from '../strings.js';
 import { navButton } from '../nav.js';
+import { getCompareList } from '../compareState.js';
 
 export async function renderDictSearch(container) {
   container.innerHTML = '';
@@ -16,6 +17,15 @@ export async function renderDictSearch(container) {
   const h1 = document.createElement('h1');
   h1.textContent = t.dictSearch.heading;
   main.appendChild(h1);
+
+  const navRow = document.createElement('div');
+  navRow.className = 'action-row';
+  const compareCount = getCompareList().length;
+  if (compareCount > 0) {
+    navRow.appendChild(navButton('#/dict/compare', t.dictSearch.compareLink(compareCount)));
+  }
+  navRow.appendChild(navButton('#/dict/usage', t.dictSearch.usageCheckLink));
+  main.appendChild(navRow);
 
   const label = document.createElement('label');
   label.setAttribute('for', 'dict-search-input');

@@ -6,6 +6,8 @@ import { renderReview } from './views/review.js';
 import { renderInstall } from './views/install.js';
 import { renderDictSearch } from './views/dictSearch.js';
 import { renderDictEntry } from './views/dictEntry.js';
+import { renderDictCompare } from './views/dictCompare.js';
+import { renderUsageCheck } from './views/usageCheck.js';
 import { renderYoutubeCapture } from './views/youtubeCapture.js';
 import { initAnnouncer } from './a11y.js';
 
@@ -21,6 +23,10 @@ async function router() {
     renderInstall(app);
   } else if (parts[0] === 'dict' && parts[1] === 'word' && parts[2]) {
     await renderDictEntry(app, parts[2]);
+  } else if (parts[0] === 'dict' && parts[1] === 'compare') {
+    await renderDictCompare(app);
+  } else if (parts[0] === 'dict' && parts[1] === 'usage') {
+    renderUsageCheck(app);
   } else if (parts[0] === 'dict') {
     await renderDictSearch(app);
   } else if (parts[0] === 'deck' && parts[1]) {

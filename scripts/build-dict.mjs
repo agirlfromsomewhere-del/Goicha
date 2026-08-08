@@ -10,6 +10,8 @@ import readline from 'node:readline';
 const SHARD_COUNT = 64;
 const MAX_SENSES_PER_ENTRY = 3;
 const MAX_EXAMPLE_LENGTH = 200;
+const MAX_RELATED_WORDS = 8;
+const MAX_NOTES = 4;
 
 const inputPath = process.argv[2];
 if (!inputPath) {
@@ -48,6 +50,14 @@ function extractSenses(obj) {
     if (senses.length >= MAX_SENSES_PER_ENTRY) break;
   }
   return senses;
+}
+
+// Usage notes and synonym/antonym lists are how this dataset expresses
+// nuance ("this word differs from that near-synonym in such-and-such
+// way") - useful for a word-comparison feature, so worth keeping even
+// though most entries don't have them.
+function extractRelated(list) {
+  return (list || []).map((r) => r.word).filter(Boolean);
 }
 
 // Common words written in kanji (verbs/adjectives especially) are often
@@ -108,11 +118,21 @@ async function main() {
 
     let record = byWord.get(word);
     if (!record) {
-      record = { reading, entries: [] };
+      record = { reading, entries: [], notes: [], synonyms: [], antonyms: [] };
       byWord.set(word, record);
     }
     if (!record.reading && reading) record.reading = reading;
     record.entries.push({ pos, senses });
+
+    for (const note of obj.notes || []) {
+      if (!record.notes.includes(note)) record.notes.push(note);
+    }
+    for (const syn of extractRelated(obj.synonyms)) {
+      if (!record.synonyms.includes(syn)) record.synonyms.push(syn);
+    }
+    for (const ant of extractRelated(obj.antonyms)) {
+      if (!record.antonyms.includes(ant)) record.antonyms.push(ant);
+    }
   }
 
   console.log(`Read ${lineCount} lines, ${byWord.size} unique headwords with real definitions, ${redirects.length} cross-reference stubs.`);
@@ -133,7 +153,12 @@ async function main() {
   for (const [word, record] of byWord) {
     const shardId = shardFor(word);
     indexRows.push([word, record.reading, shardId]);
-    shards[shardId][word] = record.entries;
+
+    const entry = { entries: record.entries };
+    if (record.notes.length) entry.notes = record.notes.slice(0, MAX_NOTES);
+    if (record.synonyms.length) entry.synonyms = record.synonyms.slice(0, MAX_RELATED_WORDS);
+    if (record.antonyms.length) entry.antonyms = record.antonyms.slice(0, MAX_RELATED_WORDS);
+    shards[shardId][word] = entry;
   }
 
   fs.mkdirSync('public/dict/entries', { recursive: true });

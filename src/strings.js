@@ -123,6 +123,8 @@ export const t = {
     prompt: 'Type a word to search.',
     results: (count) => `${count} result${count === 1 ? '' : 's'} found`,
     noResults: 'No results found',
+    compareLink: (count) => `Compare selected words (${count})`,
+    usageCheckLink: 'Check how a phrase is used',
   },
 
   // Dictionary entry
@@ -131,5 +133,44 @@ export const t = {
     definitionsHeading: 'Definitions',
     exampleLabel: 'Example: ',
     notFound: 'This word was not found.',
+    notesHeading: 'Usage notes',
+    synonymsHeading: 'Similar words',
+    antonymsHeading: 'Opposite words',
+    addToCompare: 'Add to comparison',
+    removeFromCompare: 'Remove from comparison',
+    addedToCompare: (word) => `${word} added to comparison`,
+    removedFromCompare: (word) => `${word} removed from comparison`,
+    compareFull: 'You can compare up to 3 words at a time. Remove one before adding another.',
+  },
+
+  // Word comparison
+  dictCompare: {
+    backToDict: '← Dictionary',
+    heading: 'Compare words',
+    empty: 'Add at least 2 words from the dictionary to compare them here.',
+    clearAll: 'Clear all',
+    remove: (word) => `Remove ${word} from comparison`,
+  },
+
+  // Phrase usage check (YouTube comments)
+  usageCheck: {
+    backToDict: '← Dictionary',
+    heading: 'Check how a phrase is used',
+    intro:
+      "Search Japanese YouTube comments for a phrase to see how many times it turns up in comments that look like they're written by native speakers. This checks a sample of videos, not all of YouTube, so a low count doesn't necessarily mean a phrase is unnatural.",
+    phraseLabel: 'Phrase to check',
+    checkButton: 'Check usage',
+    apiKeyMissing: 'You need to add a YouTube API key before this can search. See instructions below.',
+    apiKeyLabel: 'YouTube Data API key',
+    apiKeySave: 'Save key',
+    apiKeySaved: 'API key saved.',
+    apiKeyHelp:
+      'This feature needs your own free YouTube Data API key so it can search on your behalf (there is a small daily free quota from Google). Go to console.cloud.google.com, create a project, enable "YouTube Data API v3", create an API key under Credentials, and paste it below. The key is stored only on this device and sent only to Google, never anywhere else.',
+    searching: 'Searching YouTube...',
+    resultCount: (count, videoCount) =>
+      `Found this phrase in ${count} comment${count === 1 ? '' : 's'} across ${videoCount} video${videoCount === 1 ? '' : 's'} checked.`,
+    noMatches: 'No matching comments found in the videos checked.',
+    examplesHeading: 'Example comments',
+    apiError: 'Something went wrong talking to YouTube. Check your API key and try again.',
   },
 };

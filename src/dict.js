@@ -61,7 +61,14 @@ export async function getEntry(word) {
     shardCache.set(shardId, shard);
   }
 
-  const entries = shard[word];
-  if (!entries) return null;
-  return { word, reading, entries };
+  const data = shard[word];
+  if (!data) return null;
+  return {
+    word,
+    reading,
+    entries: data.entries,
+    notes: data.notes || [],
+    synonyms: data.synonyms || [],
+    antonyms: data.antonyms || [],
+  };
 }
