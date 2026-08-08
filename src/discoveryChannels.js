@@ -14,4 +14,5 @@ export const DISCOVERY_CHANNELS = [
   { handle: '@yurutetsugaku', label: 'ゆる哲学ラジオ' },
   { handle: '@yurutenmon', label: 'ゆる天文学ラジオ' },
   { channelId: 'UC8yHePe_RgUBE-waRWy6olw', label: 'PIVOT 公式チャンネル' },
+  { handle: '@not_shirokuro', label: '白黒つかない会議' },
 ];
