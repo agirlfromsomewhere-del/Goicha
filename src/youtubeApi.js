@@ -1,6 +1,6 @@
 // Wraps YouTube Data API v3 (official, free-tier, key-based REST API) to
 // approximate "how often do people use this phrase" by scanning comments
-// on a large sample of currently-popular Japanese videos.
+// on a large, topically diverse sample of Japanese videos.
 //
 // Real limitation, surfaced in the UI too: there is no public API to
 // search comments across all of YouTube, only to list comments on a
@@ -8,16 +8,45 @@
 // YouTube". A phrase getting zero hits doesn't prove it's unnatural, just
 // that it wasn't in this sample.
 //
-// Deliberately NOT using search.list with the phrase as the query: that
-// searches video titles/descriptions, which surfaces videos "about" the
+// The video pool is built two ways:
+// - videos.list?chart=mostPopular: cheap (~1 quota unit/call), but this
+//   chart is topically narrow - as of a 2025 YouTube change it only
+//   reflects the Trending Music/Movies/Gaming charts. A rare phrase might
+//   never show up there regardless of how many trending videos get
+//   checked, because it's the wrong topic neighborhood, not too small a
+//   neighborhood.
+// - search.list with no query, just region/language/category filters,
+//   rotated across many video categories: broadens the pool across
+//   topics the trending chart doesn't cover (education, vlogs, how-to,
+//   news, etc). Costs 100 quota units/call, so this is the expensive
+//   part, but happens once per check regardless of the phrase.
+//
+// Deliberately NOT using search.list with the phrase itself as the query:
+// that searches video titles/descriptions, surfacing videos "about" the
 // phrase's keywords rather than videos likely to have it used naturally
-// in casual comments - and costs 100 quota units per call versus ~1 for
-// the videos.list call used below, which is why this can afford to check
-// far more videos.
+// in casual comments.
 
 const API_BASE = 'https://www.googleapis.com/youtube/v3';
 const RESULTS_PER_PAGE = 50;
 const COMMENT_FETCH_CONCURRENCY = 5;
+const CATEGORY_SEARCH_CONCURRENCY = 5;
+
+// A deliberately topic-diverse spread of YouTube's standard category IDs.
+const DISCOVERY_CATEGORIES = [
+  '1', // Film & Animation
+  '2', // Autos & Vehicles
+  '15', // Pets & Animals
+  '17', // Sports
+  '19', // Travel & Events
+  '20', // Gaming
+  '22', // People & Blogs
+  '23', // Comedy
+  '24', // Entertainment
+  '25', // News & Politics
+  '26', // Howto & Style
+  '27', // Education
+  '28', // Science & Technology
+];
 
 async function apiGet(path, params, apiKey) {
   const url = new URL(`${API_BASE}/${path}`);
@@ -33,6 +62,19 @@ async function apiGet(path, params, apiKey) {
     throw error;
   }
   return res.json();
+}
+
+async function mapWithConcurrency(items, limit, fn, shouldStop = () => false) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length && !shouldStop()) {
+      const i = next++;
+      results[i] = await fn(items[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
 }
 
 async function popularJapaneseVideos(apiKey, targetCount) {
@@ -61,6 +103,39 @@ async function popularJapaneseVideos(apiKey, targetCount) {
   return videos.slice(0, targetCount);
 }
 
+async function searchByCategory(apiKey, categoryId) {
+  const data = await apiGet(
+    'search',
+    {
+      part: 'snippet',
+      type: 'video',
+      regionCode: 'JP',
+      relevanceLanguage: 'ja',
+      videoCategoryId: categoryId,
+      order: 'date',
+      maxResults: RESULTS_PER_PAGE,
+    },
+    apiKey
+  );
+  return (data.items || []).map((item) => ({ videoId: item.id.videoId, title: item.snippet.title }));
+}
+
+async function discoverJapaneseVideos(apiKey) {
+  const byId = new Map();
+
+  const popular = await popularJapaneseVideos(apiKey, 400);
+  for (const v of popular) byId.set(v.videoId, v);
+
+  const categoryResults = await mapWithConcurrency(DISCOVERY_CATEGORIES, CATEGORY_SEARCH_CONCURRENCY, (id) =>
+    searchByCategory(apiKey, id).catch(() => [])
+  );
+  for (const list of categoryResults) {
+    for (const v of list) byId.set(v.videoId, v);
+  }
+
+  return [...byId.values()];
+}
+
 async function getTopLevelComments(videoId, apiKey, maxResults) {
   const data = await apiGet(
     'commentThreads',
@@ -70,27 +145,12 @@ async function getTopLevelComments(videoId, apiKey, maxResults) {
   return (data.items || []).map((item) => item.snippet.topLevelComment.snippet.textDisplay);
 }
 
-// Like a normal concurrency-limited map, but workers stop picking up new
-// items once shouldStop() returns true. Workers already mid-request finish
-// (not aborted), so with a concurrency of N you can overshoot the stop
-// condition by up to N-1 in-flight results - fine at this scale.
-async function mapWithConcurrency(items, limit, fn, shouldStop) {
-  let next = 0;
-  async function worker() {
-    while (next < items.length && !shouldStop()) {
-      const i = next++;
-      await fn(items[i]);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-}
-
 export async function checkPhraseUsage(
   phrase,
   apiKey,
-  { maxVideos = 10000, maxCommentsPerVideo = 100, targetMatches = 10, onProgress } = {}
+  { maxCommentsPerVideo = 100, targetMatches = 10, onProgress } = {}
 ) {
-  const videos = await popularJapaneseVideos(apiKey, maxVideos);
+  const videos = await discoverJapaneseVideos(apiKey);
 
   let videosChecked = 0;
   let videosDone = 0;

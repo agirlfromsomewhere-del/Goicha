@@ -157,7 +157,7 @@ export const t = {
     backToDict: '← Dictionary',
     heading: 'Check how a phrase is used',
     intro:
-      "Checks comments on currently popular Japanese YouTube videos for a phrase. It stops once it finds 10 matching comments, or once it's checked everything available, whichever comes first. A low or zero count doesn't necessarily mean a phrase is unnatural — it may just not have come up in this sample.",
+      "Checks comments on a large, topically varied sample of Japanese YouTube videos for a phrase (trending videos plus recent videos across many categories, not just one narrow trending list). It stops once it finds 10 matching comments, or once it's checked everything in the sample, whichever comes first. A low or zero count doesn't necessarily mean a phrase is unnatural — it may just not have come up in this sample.",
     phraseLabel: 'Phrase to check',
     checkButton: 'Check usage',
     apiKeyMissing: 'You need to add a YouTube API key before this can search. See instructions below.',
