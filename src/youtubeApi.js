@@ -70,23 +70,25 @@ async function getTopLevelComments(videoId, apiKey, maxResults) {
   return (data.items || []).map((item) => item.snippet.topLevelComment.snippet.textDisplay);
 }
 
-async function mapWithConcurrency(items, limit, fn) {
-  const results = new Array(items.length);
+// Like a normal concurrency-limited map, but workers stop picking up new
+// items once shouldStop() returns true. Workers already mid-request finish
+// (not aborted), so with a concurrency of N you can overshoot the stop
+// condition by up to N-1 in-flight results - fine at this scale.
+async function mapWithConcurrency(items, limit, fn, shouldStop) {
   let next = 0;
   async function worker() {
-    while (next < items.length) {
+    while (next < items.length && !shouldStop()) {
       const i = next++;
-      results[i] = await fn(items[i]);
+      await fn(items[i]);
     }
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
 }
 
 export async function checkPhraseUsage(
   phrase,
   apiKey,
-  { maxVideos = 10000, maxCommentsPerVideo = 100, onProgress } = {}
+  { maxVideos = 10000, maxCommentsPerVideo = 100, targetMatches = 10, onProgress } = {}
 ) {
   const videos = await popularJapaneseVideos(apiKey, maxVideos);
 
@@ -94,23 +96,31 @@ export async function checkPhraseUsage(
   let videosDone = 0;
   const matches = [];
 
-  const perVideoMatches = await mapWithConcurrency(videos, COMMENT_FETCH_CONCURRENCY, async (video) => {
-    const found = [];
-    try {
-      const comments = await getTopLevelComments(video.videoId, apiKey, maxCommentsPerVideo);
-      videosChecked++;
-      for (const text of comments) {
-        if (text.includes(phrase)) found.push({ text, videoTitle: video.title, videoId: video.videoId });
+  await mapWithConcurrency(
+    videos,
+    COMMENT_FETCH_CONCURRENCY,
+    async (video) => {
+      try {
+        const comments = await getTopLevelComments(video.videoId, apiKey, maxCommentsPerVideo);
+        videosChecked++;
+        for (const text of comments) {
+          if (text.includes(phrase)) matches.push({ text, videoTitle: video.title, videoId: video.videoId });
+        }
+      } catch {
+        // Comments disabled on this video, or another per-video error - skip it.
       }
-    } catch {
-      // Comments disabled on this video, or another per-video error - skip it.
-    }
-    videosDone++;
-    if (onProgress) onProgress(videosDone, videos.length);
-    return found;
-  });
+      videosDone++;
+      if (onProgress) onProgress(videosDone, videos.length, matches.length);
+    },
+    () => matches.length >= targetMatches
+  );
 
-  for (const found of perVideoMatches) matches.push(...found);
-
-  return { matches, videosChecked, videosFound: videos.length };
+  return {
+    matches,
+    videosChecked,
+    videosFound: videos.length,
+    // true if we stopped early because we hit targetMatches, false if we
+    // ran out of videos to check before reaching it (or found none at all).
+    reachedTarget: matches.length >= targetMatches,
+  };
 }

@@ -97,30 +97,34 @@ export function renderUsageCheck(container) {
     announce(t.usageCheck.searching);
 
     try {
-      const { matches, videosChecked } = await checkPhraseUsage(phrase, apiKey, {
-        onProgress: (done, total) => {
-          status.textContent = t.usageCheck.searchProgress(done, total);
+      const { matches, videosChecked, reachedTarget } = await checkPhraseUsage(phrase, apiKey, {
+        onProgress: (done, total, matchCount) => {
+          status.textContent = t.usageCheck.searchProgress(done, total, matchCount);
           // Only announce every 20 videos so VoiceOver isn't interrupted
           // constantly - the visible text still updates every time.
           if (done % 20 === 0 || done === total) announce(status.textContent);
         },
       });
 
-      if (matches.length === 0) {
-        status.textContent = t.usageCheck.noMatches;
-        announce(t.usageCheck.noMatches);
+      let message;
+      if (reachedTarget) {
+        message = t.usageCheck.resultCount(matches.length, videosChecked);
+      } else if (matches.length > 0) {
+        message = t.usageCheck.exhaustedSome(matches.length, videosChecked);
       } else {
-        const message = t.usageCheck.resultCount(matches.length, videosChecked);
-        status.textContent = message;
-        announce(message);
+        message = t.usageCheck.exhaustedNone(videosChecked);
+      }
+      status.textContent = message;
+      announce(message);
 
+      if (matches.length > 0) {
         const examplesHeading = document.createElement('h2');
         examplesHeading.textContent = t.usageCheck.examplesHeading;
         resultsArea.appendChild(examplesHeading);
 
         const ul = document.createElement('ul');
         ul.className = 'card-list';
-        for (const match of matches.slice(0, 20)) {
+        for (const match of matches) {
           const li = document.createElement('li');
           const text = document.createElement('p');
           text.className = 'card-text';

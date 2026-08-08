@@ -157,7 +157,7 @@ export const t = {
     backToDict: '← Dictionary',
     heading: 'Check how a phrase is used',
     intro:
-      "Checks comments on currently popular Japanese YouTube videos for a phrase, and counts how many comments contain it. This samples up to 100 videos, not all of YouTube, so a low count doesn't necessarily mean a phrase is unnatural — it may just not have come up in this batch.",
+      "Checks comments on currently popular Japanese YouTube videos for a phrase. It stops once it finds 10 matching comments, or once it's checked everything available, whichever comes first. A low or zero count doesn't necessarily mean a phrase is unnatural — it may just not have come up in this sample.",
     phraseLabel: 'Phrase to check',
     checkButton: 'Check usage',
     apiKeyMissing: 'You need to add a YouTube API key before this can search. See instructions below.',
@@ -167,10 +167,14 @@ export const t = {
     apiKeyHelp:
       'This feature needs your own free YouTube Data API key so it can search on your behalf (there is a small daily free quota from Google). Go to console.cloud.google.com, create a project, enable "YouTube Data API v3", create an API key under Credentials, and paste it below. The key is stored only on this device and sent only to Google, never anywhere else.',
     searching: 'Checking videos...',
-    searchProgress: (done, total) => `Checked ${done} of ${total} videos...`,
+    searchProgress: (done, total, matchCount) =>
+      `Checked ${done} of ${total} videos, ${matchCount} match${matchCount === 1 ? '' : 'es'} so far...`,
     resultCount: (count, videoCount) =>
-      `Found this phrase in ${count} comment${count === 1 ? '' : 's'} across ${videoCount} video${videoCount === 1 ? '' : 's'} checked.`,
-    noMatches: 'No matching comments found in the videos checked.',
+      `Found this phrase in ${count} comment${count === 1 ? '' : 's'} — stopped after checking ${videoCount} video${videoCount === 1 ? '' : 's'}.`,
+    exhaustedSome: (count, videoCount) =>
+      `I checked all ${videoCount} available videos and only found this phrase in ${count} comment${count === 1 ? '' : 's'} — not quite enough to be confident, but here's what turned up.`,
+    exhaustedNone: (videoCount) =>
+      `I looked through all ${videoCount} available videos but didn't find this phrase in any comments. That doesn't prove it's unnatural — just that it didn't come up in this search.`,
     examplesHeading: 'Example comments',
     apiError: 'Something went wrong talking to YouTube. Check your API key and try again.',
   },
