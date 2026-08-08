@@ -22,8 +22,14 @@ const isKana = (s) => typeof s === 'string' && s.length > 0 && KANA_RE.test(s);
 
 function extractReading(obj) {
   const forms = obj.forms || [];
-  const translit = forms.find((f) => f.tags && f.tags.includes('transliteration'));
-  if (translit) return translit.form;
+  const translitForms = forms.filter((f) => f.tags && f.tags.includes('transliteration'));
+  if (translitForms.length > 0) {
+    // Single-kanji entries often list several on-yomi/kun-yomi readings.
+    // The kun-yomi (native reading) is what the word is actually read as
+    // in isolation (e.g. 猫 -> ねこ, not the on-yomi ミョウ), so prefer it.
+    const kun = translitForms.find((f) => f.tags.includes('kun'));
+    return (kun || translitForms[0]).form;
+  }
   if (isKana(obj.word)) return obj.word;
   const plain = forms.find((f) => (!f.tags || f.tags.length === 0) && isKana(f.form));
   return plain ? plain.form : '';
@@ -48,12 +54,19 @@ function extractSenses(obj) {
 // stored in this dataset as a bare "kanji notation of <reading>" stub under
 // the kanji headword, with the real definition living under the hiragana
 // reading instead. Detect those stubs so callers can redirect to the real
-// entry rather than surfacing an unhelpful cross-reference.
+// entry rather than surfacing an unhelpful cross-reference. Only treat it
+// as a clean redirect when every sense agrees on the exact same target —
+// some entries (e.g. 来る) list different, inconsistent form_of targets
+// per sense, which is the source data being messy rather than a real
+// single-target cross-reference, and blindly following it would show a
+// completely unrelated word's definition.
 function formOfTarget(obj) {
   const senses = obj.senses || [];
   if (senses.length === 0) return null;
-  const allRedirects = senses.every((s) => s.form_of && s.form_of[0] && s.form_of[0].word);
-  return allRedirects ? senses[0].form_of[0].word : null;
+  const targets = senses.map((s) => s.form_of && s.form_of[0] && s.form_of[0].word);
+  if (targets.some((t) => !t)) return null;
+  const distinct = new Set(targets);
+  return distinct.size === 1 ? targets[0] : null;
 }
 
 // Simple, stable string hash for shard assignment.

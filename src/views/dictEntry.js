@@ -1,6 +1,7 @@
 import { getEntry } from '../dict.js';
 import { focusElement } from '../a11y.js';
 import { t } from '../strings.js';
+import { navButton } from '../nav.js';
 
 export async function renderDictEntry(container, word) {
   container.innerHTML = '';
@@ -9,10 +10,7 @@ export async function renderDictEntry(container, word) {
   main.id = 'main';
   main.setAttribute('tabindex', '-1');
 
-  const back = document.createElement('a');
-  back.href = '#/dict';
-  back.className = 'back-link';
-  back.textContent = t.dictEntry.backToSearch;
+  const back = navButton('#/dict', t.dictEntry.backToSearch, 'back-link');
   main.appendChild(back);
 
   const decoded = decodeURIComponent(word);

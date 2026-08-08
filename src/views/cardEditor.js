@@ -2,6 +2,7 @@ import { createCard, getCard, updateCard, getDeck } from '../db.js';
 import { announce, focusElement } from '../a11y.js';
 import { t } from '../strings.js';
 import { field } from '../formField.js';
+import { navButton } from '../nav.js';
 
 export async function renderCardEditor(container, deckId, cardId) {
   const deck = await getDeck(deckId);
@@ -12,10 +13,7 @@ export async function renderCardEditor(container, deckId, cardId) {
   main.id = 'main';
   main.setAttribute('tabindex', '-1');
 
-  const back = document.createElement('a');
-  back.href = `#/deck/${deckId}`;
-  back.className = 'back-link';
-  back.textContent = `← ${deck ? deck.name : 'デッキ'}`;
+  const back = navButton(`#/deck/${deckId}`, `← ${deck ? deck.name : 'Deck'}`, 'back-link');
   main.appendChild(back);
 
   const h1 = document.createElement('h1');

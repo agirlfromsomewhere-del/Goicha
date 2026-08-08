@@ -2,6 +2,7 @@ import { getDueCards, updateCard, logReview, getDeck } from '../db.js';
 import { schedule } from '../srs.js';
 import { announce, focusElement } from '../a11y.js';
 import { t } from '../strings.js';
+import { navButton } from '../nav.js';
 
 export async function renderReview(container, deckId) {
   const deck = await getDeck(deckId);
@@ -15,10 +16,7 @@ export async function renderReview(container, deckId) {
   main.id = 'main';
   main.setAttribute('tabindex', '-1');
 
-  const back = document.createElement('a');
-  back.href = `#/deck/${deckId}`;
-  back.className = 'back-link';
-  back.textContent = `← ${deck ? deck.name : 'デッキ'}`;
+  const back = navButton(`#/deck/${deckId}`, `← ${deck ? deck.name : 'Deck'}`, 'back-link');
   main.appendChild(back);
 
   const h1 = document.createElement('h1');
@@ -50,10 +48,7 @@ export async function renderReview(container, deckId) {
       const summary = document.createElement('p');
       summary.textContent = total === 0 ? t.review.nothingMessage : t.review.completeMessage(reviewed);
 
-      const doneBack = document.createElement('a');
-      doneBack.href = `#/deck/${deckId}`;
-      doneBack.className = 'button button-primary';
-      doneBack.textContent = t.review.backToDeck;
+      const doneBack = navButton(`#/deck/${deckId}`, t.review.backToDeck, 'button-primary');
 
       done.append(doneH, summary, doneBack);
       cardArea.appendChild(done);

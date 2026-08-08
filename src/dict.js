@@ -3,6 +3,8 @@
 // search, and per-shard definition files fetched lazily on demand so the
 // full ~20MB dictionary is never downloaded up front.
 
+import { romajiToHiragana, looksLikeRomaji } from './romaji.js';
+
 let indexData = null;
 let indexPromise = null;
 const shardCache = new Map();
@@ -22,10 +24,14 @@ export function ensureIndexLoaded() {
 
 // Assumes ensureIndexLoaded() has already resolved. Prefix matches
 // (word/reading starts with the query) rank above substring matches.
+// If the query is typed in plain romaji (e.g. "neko" on a non-Japanese
+// keyboard), it's converted to hiragana first since the dictionary is
+// only indexed by kana/kanji.
 export function search(query, limit = 50) {
   if (!indexData) return [];
-  const q = query.trim();
+  let q = query.trim();
   if (!q) return [];
+  if (looksLikeRomaji(q)) q = romajiToHiragana(q.replace(/\s+/g, ''));
 
   const starts = [];
   const contains = [];

@@ -1,6 +1,7 @@
 import { getDeck, getCardsByDeck, getDueCards, deleteDeck, deleteCard, renameDeck } from '../db.js';
 import { announce, focusElement } from '../a11y.js';
 import { t } from '../strings.js';
+import { navButton } from '../nav.js';
 
 export async function renderDeckDetail(container, deckId) {
   const deck = await getDeck(deckId);
@@ -13,19 +14,14 @@ export async function renderDeckDetail(container, deckId) {
   if (!deck) {
     const p = document.createElement('p');
     p.textContent = t.deckDetail.notFound;
-    const back = document.createElement('a');
-    back.href = '#/';
-    back.textContent = t.backToDecks;
+    const back = navButton('#/', t.backToDecks);
     main.append(p, back);
     container.appendChild(main);
     focusElement(main);
     return;
   }
 
-  const back = document.createElement('a');
-  back.href = '#/';
-  back.className = 'back-link';
-  back.textContent = t.backToDecks;
+  const back = navButton('#/', t.backToDecks, 'back-link');
   main.appendChild(back);
 
   const h1 = document.createElement('h1');
@@ -42,26 +38,18 @@ export async function renderDeckDetail(container, deckId) {
   const actions = document.createElement('div');
   actions.className = 'action-row';
 
-  const addBtn = document.createElement('a');
-  addBtn.href = `#/deck/${deckId}/new`;
-  addBtn.className = 'button';
-  addBtn.textContent = t.deckDetail.addCard;
+  const addBtn = navButton(`#/deck/${deckId}/new`, t.deckDetail.addCard);
   actions.appendChild(addBtn);
 
-  const captureBtn = document.createElement('a');
-  captureBtn.href = `#/deck/${deckId}/capture`;
-  captureBtn.className = 'button';
-  captureBtn.textContent = t.youtubeCapture.navLink;
+  const captureBtn = navButton(`#/deck/${deckId}/capture`, t.youtubeCapture.navLink);
   actions.appendChild(captureBtn);
 
-  const reviewBtn = document.createElement('a');
-  reviewBtn.href = `#/deck/${deckId}/review`;
-  reviewBtn.className = 'button button-primary';
-  reviewBtn.textContent = due.length > 0 ? t.deckDetail.startReview(due.length) : t.deckDetail.reviewAnyway;
-  if (cards.length === 0) {
-    reviewBtn.setAttribute('aria-disabled', 'true');
-    reviewBtn.addEventListener('click', (e) => e.preventDefault());
-  }
+  const reviewBtn = navButton(
+    `#/deck/${deckId}/review`,
+    due.length > 0 ? t.deckDetail.startReview(due.length) : t.deckDetail.reviewAnyway,
+    'button-primary'
+  );
+  if (cards.length === 0) reviewBtn.disabled = true;
   actions.appendChild(reviewBtn);
 
   main.appendChild(actions);
@@ -124,9 +112,7 @@ export async function renderDeckDetail(container, deckId) {
     ul.className = 'card-list';
     for (const card of cards) {
       const li = document.createElement('li');
-      const link = document.createElement('a');
-      link.href = `#/deck/${deckId}/card/${card.id}`;
-      link.textContent = card.front;
+      const openBtn = navButton(`#/deck/${deckId}/card/${card.id}`, card.front);
 
       const del = document.createElement('button');
       del.type = 'button';
@@ -141,7 +127,7 @@ export async function renderDeckDetail(container, deckId) {
         focusElement(document.getElementById('main'));
       });
 
-      li.append(link, del);
+      li.append(openBtn, del);
       ul.appendChild(li);
     }
     main.appendChild(ul);

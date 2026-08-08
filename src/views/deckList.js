@@ -1,6 +1,7 @@
 import { getDecks, createDeck, getCardsByDeck, getDueCards } from '../db.js';
 import { announce, focusElement } from '../a11y.js';
 import { t } from '../strings.js';
+import { navButton } from '../nav.js';
 
 export async function renderDeckList(container) {
   container.innerHTML = '';
@@ -16,17 +17,10 @@ export async function renderDeckList(container) {
   const navRow = document.createElement('div');
   navRow.className = 'action-row';
 
-  const installLink = document.createElement('a');
-  installLink.href = '#/install';
-  installLink.className = 'install-link';
-  installLink.textContent = t.home.installLink;
+  const installBtn = navButton('#/install', t.home.installLink, 'install-link');
+  const dictBtn = navButton('#/dict', t.home.dictLink, 'install-link');
 
-  const dictLink = document.createElement('a');
-  dictLink.href = '#/dict';
-  dictLink.className = 'install-link';
-  dictLink.textContent = t.home.dictLink;
-
-  navRow.append(installLink, dictLink);
+  navRow.append(installBtn, dictBtn);
   main.appendChild(navRow);
 
   const formHeading = document.createElement('h2');
@@ -85,14 +79,12 @@ export async function renderDeckList(container) {
       const due = await getDueCards(deck.id);
 
       const li = document.createElement('li');
-      const link = document.createElement('a');
-      link.href = `#/deck/${deck.id}`;
-      link.textContent = deck.name;
+      const openBtn = navButton(`#/deck/${deck.id}`, deck.name);
 
       const meta = document.createElement('span');
       meta.textContent = t.home.deckMeta(cards.length, due.length);
 
-      li.append(link, meta);
+      li.append(openBtn, meta);
       ul.appendChild(li);
     }
     main.appendChild(ul);

@@ -1,6 +1,7 @@
 import { ensureIndexLoaded, search } from '../dict.js';
 import { announce, focusElement } from '../a11y.js';
 import { t } from '../strings.js';
+import { navButton } from '../nav.js';
 
 export async function renderDictSearch(container) {
   container.innerHTML = '';
@@ -9,10 +10,7 @@ export async function renderDictSearch(container) {
   main.id = 'main';
   main.setAttribute('tabindex', '-1');
 
-  const back = document.createElement('a');
-  back.href = '#/';
-  back.className = 'back-link';
-  back.textContent = t.backToDecks;
+  const back = navButton('#/', t.backToDecks, 'back-link');
   main.appendChild(back);
 
   const h1 = document.createElement('h1');
@@ -50,8 +48,25 @@ export async function renderDictSearch(container) {
   await ensureIndexLoaded();
   input.disabled = false;
 
+  // Guard against iOS/Japanese-IME composition: while the user is still
+  // composing kana/kanji (before confirming), 'input' fires repeatedly on
+  // incomplete text - searching on that gives confusing/empty results.
+  // Wait for compositionend before running search on composed text.
+  let isComposing = false;
   let debounceTimer;
+
+  input.addEventListener('compositionstart', () => {
+    isComposing = true;
+  });
+
+  input.addEventListener('compositionend', () => {
+    isComposing = false;
+    clearTimeout(debounceTimer);
+    runSearch(input.value);
+  });
+
   input.addEventListener('input', () => {
+    if (isComposing) return;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => runSearch(input.value), 200);
   });
@@ -78,10 +93,9 @@ export async function renderDictSearch(container) {
 
     for (const [word, reading] of results) {
       const li = document.createElement('li');
-      const link = document.createElement('a');
-      link.href = `#/dict/word/${encodeURIComponent(word)}`;
-      link.textContent = reading ? `${word}（${reading}）` : word;
-      li.appendChild(link);
+      const label = reading ? `${word} (${reading})` : word;
+      const openBtn = navButton(`#/dict/word/${encodeURIComponent(word)}`, label);
+      li.appendChild(openBtn);
       resultsList.appendChild(li);
     }
   }

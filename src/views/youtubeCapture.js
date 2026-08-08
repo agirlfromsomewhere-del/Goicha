@@ -2,6 +2,7 @@ import { createCard, getDeck } from '../db.js';
 import { announce, focusElement } from '../a11y.js';
 import { t } from '../strings.js';
 import { field } from '../formField.js';
+import { navButton } from '../nav.js';
 import { createPlayer, extractVideoId, formatTime } from '../youtube.js';
 
 export async function renderYoutubeCapture(container, deckId) {
@@ -12,10 +13,7 @@ export async function renderYoutubeCapture(container, deckId) {
   main.id = 'main';
   main.setAttribute('tabindex', '-1');
 
-  const back = document.createElement('a');
-  back.href = `#/deck/${deckId}`;
-  back.className = 'back-link';
-  back.textContent = `← ${deck ? deck.name : 'デッキ'}`;
+  const back = navButton(`#/deck/${deckId}`, `← ${deck ? deck.name : 'Deck'}`, 'back-link');
   main.appendChild(back);
 
   const h1 = document.createElement('h1');
@@ -37,6 +35,18 @@ export async function renderYoutubeCapture(container, deckId) {
   const status = document.createElement('p');
   status.className = 'progress';
 
+  // Reachable before the embedded player in the DOM so VoiceOver users can
+  // jump straight to the capture form instead of swiping through YouTube's
+  // own dozens of player controls (play/pause, captions, settings, etc.)
+  // every time. Only shown once a video is actually loaded.
+  const skipButton = document.createElement('button');
+  skipButton.type = 'button';
+  skipButton.hidden = true;
+  skipButton.textContent = t.youtubeCapture.skipToForm;
+  skipButton.addEventListener('click', () => {
+    focusElement(document.getElementById('capture-heading'));
+  });
+
   const playerHolder = document.createElement('div');
   const playerDiv = document.createElement('div');
   playerDiv.id = 'yt-player-target';
@@ -45,7 +55,7 @@ export async function renderYoutubeCapture(container, deckId) {
   const captureSection = document.createElement('div');
   captureSection.hidden = true;
 
-  main.append(urlForm, status, playerHolder, captureSection);
+  main.append(urlForm, status, skipButton, playerHolder, captureSection);
   container.appendChild(main);
   focusElement(h1);
 
@@ -63,6 +73,7 @@ export async function renderYoutubeCapture(container, deckId) {
 
     status.textContent = '';
     captureSection.hidden = true;
+    skipButton.hidden = true;
     recordedSeconds = null;
 
     if (player) {
@@ -77,6 +88,7 @@ export async function renderYoutubeCapture(container, deckId) {
     player = await createPlayer('yt-player-target', videoId);
     status.textContent = t.youtubeCapture.videoLoaded;
     announce(t.youtubeCapture.videoLoaded);
+    skipButton.hidden = false;
 
     setupCaptureForm(videoId);
   });
@@ -84,6 +96,11 @@ export async function renderYoutubeCapture(container, deckId) {
   function setupCaptureForm(videoId) {
     captureSection.innerHTML = '';
     captureSection.hidden = false;
+
+    const captureHeading = document.createElement('h2');
+    captureHeading.id = 'capture-heading';
+    captureHeading.textContent = t.youtubeCapture.captureHeading;
+    captureSection.appendChild(captureHeading);
 
     const timeRow = document.createElement('div');
     timeRow.className = 'action-row';

@@ -1,5 +1,6 @@
 import { focusElement } from '../a11y.js';
 import { t } from '../strings.js';
+import { navButton } from '../nav.js';
 
 export function renderInstall(container) {
   container.innerHTML = '';
@@ -7,10 +8,7 @@ export function renderInstall(container) {
   main.id = 'main';
   main.setAttribute('tabindex', '-1');
 
-  const back = document.createElement('a');
-  back.href = '#/';
-  back.className = 'back-link';
-  back.textContent = t.backToDecks;
+  const back = navButton('#/', t.backToDecks, 'back-link');
   main.appendChild(back);
 
   const h1 = document.createElement('h1');

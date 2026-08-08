@@ -30,6 +30,13 @@ export async function createPlayer(elementId, videoId) {
       videoId,
       width: '100%',
       height: '220',
+      playerVars: {
+        // Without this, YouTube's own player chrome (and the video title
+        // it displays) gets auto-translated based on the viewer's detected
+        // locale, which showed up as an unwanted translated title.
+        hl: 'en',
+        cc_lang_pref: 'en',
+      },
       events: {
         onReady: () => resolve(player),
       },
