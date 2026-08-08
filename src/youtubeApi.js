@@ -25,6 +25,14 @@
 // that searches video titles/descriptions, surfacing videos "about" the
 // phrase's keywords rather than videos likely to have it used naturally
 // in casual comments.
+//
+// A third source, on top of the two above: recent uploads from a curated
+// list of long-form Japanese talk/discussion channels (see
+// discoveryChannels.js) - user-requested, since these tend to have far
+// more natural conversational language and opinion-heavy comments than
+// generic trending/category browsing turns up.
+
+import { DISCOVERY_CHANNELS } from './discoveryChannels.js';
 
 const API_BASE = 'https://www.googleapis.com/youtube/v3';
 const RESULTS_PER_PAGE = 50;
@@ -120,6 +128,21 @@ async function searchByCategory(apiKey, categoryId) {
   return (data.items || []).map((item) => ({ videoId: item.id.videoId, title: item.snippet.title }));
 }
 
+async function resolveChannelId(apiKey, entry) {
+  if (entry.channelId) return entry.channelId;
+  const data = await apiGet('channels', { part: 'id', forHandle: entry.handle }, apiKey);
+  return (data.items && data.items[0] && data.items[0].id) || null;
+}
+
+async function channelRecentVideos(apiKey, channelId) {
+  const data = await apiGet(
+    'search',
+    { part: 'snippet', type: 'video', channelId, order: 'date', maxResults: RESULTS_PER_PAGE },
+    apiKey
+  );
+  return (data.items || []).map((item) => ({ videoId: item.id.videoId, title: item.snippet.title }));
+}
+
 async function discoverJapaneseVideos(apiKey) {
   const byId = new Map();
 
@@ -130,6 +153,19 @@ async function discoverJapaneseVideos(apiKey) {
     searchByCategory(apiKey, id).catch(() => [])
   );
   for (const list of categoryResults) {
+    for (const v of list) byId.set(v.videoId, v);
+  }
+
+  const channelResults = await mapWithConcurrency(DISCOVERY_CHANNELS, CATEGORY_SEARCH_CONCURRENCY, async (entry) => {
+    try {
+      const channelId = await resolveChannelId(apiKey, entry);
+      if (!channelId) return [];
+      return await channelRecentVideos(apiKey, channelId);
+    } catch {
+      return [];
+    }
+  });
+  for (const list of channelResults) {
     for (const v of list) byId.set(v.videoId, v);
   }
 
