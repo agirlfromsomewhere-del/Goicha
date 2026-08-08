@@ -86,7 +86,7 @@ async function mapWithConcurrency(items, limit, fn) {
 export async function checkPhraseUsage(
   phrase,
   apiKey,
-  { maxVideos = 100, maxCommentsPerVideo = 100, onProgress } = {}
+  { maxVideos = 10000, maxCommentsPerVideo = 100, onProgress } = {}
 ) {
   const videos = await popularJapaneseVideos(apiKey, maxVideos);
 
