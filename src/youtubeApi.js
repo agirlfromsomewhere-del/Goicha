@@ -1,29 +1,23 @@
 // Wraps YouTube Data API v3 (official, free-tier, key-based REST API) to
-// approximate "how often does native speakers use this phrase" by:
-//   1. searching for Japanese-relevant videos matching the phrase,
-//   2. pulling top comments from those videos,
-//   3. keeping only comments that actually contain the phrase and look
-//      like they're written primarily in Japanese script.
+// approximate "how often do people use this phrase" by scanning comments
+// on a large sample of currently-popular Japanese videos.
 //
-// Real limitations, worth being upfront about (surfaced in the UI too):
-// - There is no public API to search comments across all of YouTube, only
-//   to list comments on a specific video - so this checks a small sample
-//   of videos the search API surfaces, not "all of YouTube".
-// - "Japanese script ratio" is a heuristic for "written in Japanese", not
-//   a true native-vs-learner classifier - no such reliable classifier
-//   exists as a simple client-side check. A learner writing a practice
-//   sentence entirely in kana/kanji would also pass this filter.
+// Real limitation, surfaced in the UI too: there is no public API to
+// search comments across all of YouTube, only to list comments on a
+// specific video - so this checks a large sample of videos, not "all of
+// YouTube". A phrase getting zero hits doesn't prove it's unnatural, just
+// that it wasn't in this sample.
+//
+// Deliberately NOT using search.list with the phrase as the query: that
+// searches video titles/descriptions, which surfaces videos "about" the
+// phrase's keywords rather than videos likely to have it used naturally
+// in casual comments - and costs 100 quota units per call versus ~1 for
+// the videos.list call used below, which is why this can afford to check
+// far more videos.
 
 const API_BASE = 'https://www.googleapis.com/youtube/v3';
-const JAPANESE_SCRIPT_RE = /[぀-ヿ一-鿿ｦ-ﾟ]/;
-const NATIVE_LIKELY_THRESHOLD = 0.7;
-
-function japaneseScriptRatio(text) {
-  const chars = [...text].filter((c) => !/\s/.test(c) && c.trim().length > 0);
-  if (chars.length === 0) return 0;
-  const jpChars = chars.filter((c) => JAPANESE_SCRIPT_RE.test(c));
-  return jpChars.length / chars.length;
-}
+const RESULTS_PER_PAGE = 50;
+const COMMENT_FETCH_CONCURRENCY = 5;
 
 async function apiGet(path, params, apiKey) {
   const url = new URL(`${API_BASE}/${path}`);
@@ -41,16 +35,30 @@ async function apiGet(path, params, apiKey) {
   return res.json();
 }
 
-async function searchVideos(query, apiKey, maxResults) {
-  const data = await apiGet(
-    'search',
-    { part: 'snippet', type: 'video', relevanceLanguage: 'ja', maxResults, q: query },
-    apiKey
-  );
-  return (data.items || []).map((item) => ({
-    videoId: item.id.videoId,
-    title: item.snippet.title,
-  }));
+async function popularJapaneseVideos(apiKey, targetCount) {
+  const videos = [];
+  let pageToken;
+
+  while (videos.length < targetCount) {
+    const data = await apiGet(
+      'videos',
+      {
+        part: 'snippet',
+        chart: 'mostPopular',
+        regionCode: 'JP',
+        maxResults: RESULTS_PER_PAGE,
+        ...(pageToken ? { pageToken } : {}),
+      },
+      apiKey
+    );
+    for (const item of data.items || []) {
+      videos.push({ videoId: item.id, title: item.snippet.title });
+    }
+    pageToken = data.nextPageToken;
+    if (!pageToken) break;
+  }
+
+  return videos.slice(0, targetCount);
 }
 
 async function getTopLevelComments(videoId, apiKey, maxResults) {
@@ -62,28 +70,47 @@ async function getTopLevelComments(videoId, apiKey, maxResults) {
   return (data.items || []).map((item) => item.snippet.topLevelComment.snippet.textDisplay);
 }
 
-export async function checkPhraseUsage(phrase, apiKey, { maxVideos = 8, maxCommentsPerVideo = 100 } = {}) {
-  const videos = await searchVideos(phrase, apiKey, maxVideos);
-
-  const matches = [];
-  let videosChecked = 0;
-
-  for (const video of videos) {
-    let comments;
-    try {
-      comments = await getTopLevelComments(video.videoId, apiKey, maxCommentsPerVideo);
-    } catch {
-      // Comments disabled on this video, or another per-video error - skip it and keep going.
-      continue;
-    }
-    videosChecked++;
-
-    for (const text of comments) {
-      if (!text.includes(phrase)) continue;
-      if (japaneseScriptRatio(text) < NATIVE_LIKELY_THRESHOLD) continue;
-      matches.push({ text, videoTitle: video.title, videoId: video.videoId });
+async function mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]);
     }
   }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+export async function checkPhraseUsage(
+  phrase,
+  apiKey,
+  { maxVideos = 100, maxCommentsPerVideo = 100, onProgress } = {}
+) {
+  const videos = await popularJapaneseVideos(apiKey, maxVideos);
+
+  let videosChecked = 0;
+  let videosDone = 0;
+  const matches = [];
+
+  const perVideoMatches = await mapWithConcurrency(videos, COMMENT_FETCH_CONCURRENCY, async (video) => {
+    const found = [];
+    try {
+      const comments = await getTopLevelComments(video.videoId, apiKey, maxCommentsPerVideo);
+      videosChecked++;
+      for (const text of comments) {
+        if (text.includes(phrase)) found.push({ text, videoTitle: video.title, videoId: video.videoId });
+      }
+    } catch {
+      // Comments disabled on this video, or another per-video error - skip it.
+    }
+    videosDone++;
+    if (onProgress) onProgress(videosDone, videos.length);
+    return found;
+  });
+
+  for (const found of perVideoMatches) matches.push(...found);
 
   return { matches, videosChecked, videosFound: videos.length };
 }

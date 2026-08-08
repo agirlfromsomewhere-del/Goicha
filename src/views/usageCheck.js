@@ -97,7 +97,14 @@ export function renderUsageCheck(container) {
     announce(t.usageCheck.searching);
 
     try {
-      const { matches, videosChecked } = await checkPhraseUsage(phrase, apiKey);
+      const { matches, videosChecked } = await checkPhraseUsage(phrase, apiKey, {
+        onProgress: (done, total) => {
+          status.textContent = t.usageCheck.searchProgress(done, total);
+          // Only announce every 20 videos so VoiceOver isn't interrupted
+          // constantly - the visible text still updates every time.
+          if (done % 20 === 0 || done === total) announce(status.textContent);
+        },
+      });
 
       if (matches.length === 0) {
         status.textContent = t.usageCheck.noMatches;

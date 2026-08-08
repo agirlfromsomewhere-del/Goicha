@@ -157,7 +157,7 @@ export const t = {
     backToDict: '← Dictionary',
     heading: 'Check how a phrase is used',
     intro:
-      "Search Japanese YouTube comments for a phrase to see how many times it turns up in comments that look like they're written by native speakers. This checks a sample of videos, not all of YouTube, so a low count doesn't necessarily mean a phrase is unnatural.",
+      "Checks comments on currently popular Japanese YouTube videos for a phrase, and counts how many comments contain it. This samples up to 100 videos, not all of YouTube, so a low count doesn't necessarily mean a phrase is unnatural — it may just not have come up in this batch.",
     phraseLabel: 'Phrase to check',
     checkButton: 'Check usage',
     apiKeyMissing: 'You need to add a YouTube API key before this can search. See instructions below.',
@@ -166,7 +166,8 @@ export const t = {
     apiKeySaved: 'API key saved.',
     apiKeyHelp:
       'This feature needs your own free YouTube Data API key so it can search on your behalf (there is a small daily free quota from Google). Go to console.cloud.google.com, create a project, enable "YouTube Data API v3", create an API key under Credentials, and paste it below. The key is stored only on this device and sent only to Google, never anywhere else.',
-    searching: 'Searching YouTube...',
+    searching: 'Checking videos...',
+    searchProgress: (done, total) => `Checked ${done} of ${total} videos...`,
     resultCount: (count, videoCount) =>
       `Found this phrase in ${count} comment${count === 1 ? '' : 's'} across ${videoCount} video${videoCount === 1 ? '' : 's'} checked.`,
     noMatches: 'No matching comments found in the videos checked.',
