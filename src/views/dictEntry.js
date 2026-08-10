@@ -3,6 +3,10 @@ import { announce, focusElement } from '../a11y.js';
 import { t } from '../strings.js';
 import { navButton } from '../nav.js';
 import { isInCompare, canAddToCompare, addToCompare, removeFromCompare } from '../compareState.js';
+import { getDecks, createCard } from '../db.js';
+import { getYoutubeApiKey } from '../apiKeyStore.js';
+import { checkPhraseUsage } from '../youtubeApi.js';
+import { getLastDeckId, setLastDeckId } from '../lastDeckStore.js';
 
 export async function renderDictEntry(container, word) {
   container.innerHTML = '';
@@ -95,6 +99,8 @@ export async function renderDictEntry(container, word) {
     main.appendChild(ol);
   }
 
+  main.appendChild(await buildAddCardSection(entry));
+
   if (entry.notes.length) {
     const notesHeading = document.createElement('h2');
     notesHeading.textContent = t.dictEntry.notesHeading;
@@ -133,4 +139,121 @@ function wordLinkList(words) {
     ul.appendChild(li);
   }
   return ul;
+}
+
+function buildDefinitionsText(entry) {
+  const lines = [];
+  for (const group of entry.entries) {
+    for (const sense of group.senses) {
+      lines.push(`(${group.pos}) ${sense.gloss}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+// The dictionary already carries at most one example per sense (see
+// build-dict.mjs) - used to fill in when a YouTube search isn't available
+// or doesn't turn up all 3 requested examples.
+function collectDictionaryExamples(entry, limit) {
+  const examples = [];
+  for (const group of entry.entries) {
+    for (const sense of group.senses) {
+      if (sense.example) examples.push(sense.example);
+      if (examples.length >= limit) return examples;
+    }
+  }
+  return examples;
+}
+
+async function buildAddCardSection(entry) {
+  const section = document.createElement('div');
+
+  const heading = document.createElement('h2');
+  heading.textContent = t.dictEntry.addCardHeading;
+  section.appendChild(heading);
+
+  const deckList = await getDecks();
+
+  if (deckList.length === 0) {
+    const p = document.createElement('p');
+    p.textContent = t.dictEntry.noDecksYet;
+    const goBtn = navButton('#/', t.dictEntry.goToDecks);
+    section.append(p, goBtn);
+    return section;
+  }
+
+  const form = document.createElement('form');
+  form.setAttribute('aria-label', t.dictEntry.addCardHeading);
+
+  const deckLabel = document.createElement('label');
+  deckLabel.setAttribute('for', 'add-card-deck');
+  deckLabel.textContent = t.dictEntry.deckLabel;
+
+  const deckSelect = document.createElement('select');
+  deckSelect.id = 'add-card-deck';
+  const lastDeckId = getLastDeckId();
+  for (const deck of deckList) {
+    const option = document.createElement('option');
+    option.value = deck.id;
+    option.textContent = deck.name;
+    if (deck.id === lastDeckId) option.selected = true;
+    deckSelect.appendChild(option);
+  }
+
+  const createBtn = document.createElement('button');
+  createBtn.type = 'submit';
+  createBtn.className = 'button-primary';
+  createBtn.textContent = t.dictEntry.createCardButton;
+
+  form.append(deckLabel, deckSelect, createBtn);
+
+  const status = document.createElement('p');
+  status.className = 'progress';
+
+  section.append(form, status);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const deckId = deckSelect.value;
+    createBtn.disabled = true;
+
+    const apiKey = getYoutubeApiKey();
+    let examples = [];
+
+    if (apiKey) {
+      status.textContent = t.dictEntry.findingExamples;
+      announce(t.dictEntry.findingExamples);
+      try {
+        const result = await checkPhraseUsage(entry.word, apiKey, {
+          targetMatches: 3,
+          onProgress: (done, total, matchCount) => {
+            status.textContent = t.dictEntry.findingExamplesProgress(done, total, matchCount);
+          },
+        });
+        examples = result.matches.slice(0, 3).map((m) => m.text);
+      } catch {
+        // Fall through to dictionary-only examples below.
+      }
+    }
+
+    if (examples.length < 3) {
+      examples = examples.concat(collectDictionaryExamples(entry, 3 - examples.length));
+    }
+
+    const front = entry.word;
+    const backParts = [];
+    if (entry.reading) backParts.push(entry.reading);
+    backParts.push(buildDefinitionsText(entry));
+    const back = backParts.join('\n\n');
+    const example = examples.join('\n\n');
+
+    await createCard({ deckId, front, back, example });
+    setLastDeckId(deckId);
+
+    status.textContent = t.dictEntry.cardCreated(entry.word);
+    announce(t.dictEntry.cardCreated(entry.word));
+    createBtn.disabled = false;
+  });
+
+  return section;
 }

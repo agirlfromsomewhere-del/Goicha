@@ -141,6 +141,15 @@ export const t = {
     addedToCompare: (word) => `${word} added to comparison`,
     removedFromCompare: (word) => `${word} removed from comparison`,
     compareFull: 'You can compare up to 3 words at a time. Remove one before adding another.',
+    addCardHeading: 'Add as flashcard',
+    deckLabel: 'Add to deck',
+    noDecksYet: 'Create a deck first before adding flashcards from the dictionary.',
+    goToDecks: 'Go to decks',
+    createCardButton: 'Create flashcard',
+    findingExamples: 'Looking for real usage examples on YouTube...',
+    findingExamplesProgress: (done, total, matchCount) =>
+      `Checked ${done} of ${total} videos, found ${matchCount} example${matchCount === 1 ? '' : 's'} so far...`,
+    cardCreated: (word) => `Flashcard created for ${word}.`,
   },
 
   // Word comparison
