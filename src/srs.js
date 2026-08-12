@@ -1,32 +1,65 @@
-// SM-2 spaced-repetition scheduling (the classic Anki-style algorithm).
-const MIN_EASE = 1.3;
-const DAY_MS = 24 * 60 * 60 * 1000;
+// FSRS (Free Spaced Repetition Scheduler) - the algorithm modern Anki
+// itself uses (replacing the older SM-2 algorithm as of Anki 23.10+).
+// Uses the official open-spaced-repetition/ts-fsrs library with its
+// default, research-derived parameters (no per-user optimization, same
+// as what a fresh Anki install uses before you've logged enough reviews
+// to run its optimizer).
+import { createEmptyCard, fsrs, Rating, State } from 'ts-fsrs';
 
-// Map our four grading buttons onto SM-2's 0-5 quality scale.
-const QUALITY = { again: 0, hard: 3, good: 4, easy: 5 };
+const scheduler = fsrs();
+
+const RATING = { again: Rating.Again, hard: Rating.Hard, good: Rating.Good, easy: Rating.Easy };
+
+function fromFsrsCard(fsrsCard) {
+  return {
+    dueDate: fsrsCard.due.getTime(),
+    stability: fsrsCard.stability,
+    difficulty: fsrsCard.difficulty,
+    elapsed_days: fsrsCard.elapsed_days,
+    scheduled_days: fsrsCard.scheduled_days,
+    learning_steps: fsrsCard.learning_steps,
+    reps: fsrsCard.reps,
+    lapses: fsrsCard.lapses,
+    state: fsrsCard.state,
+    last_review: fsrsCard.last_review ? fsrsCard.last_review.getTime() : undefined,
+  };
+}
+
+// Converts our stored card (plain object, dates as numbers) into an FSRS
+// Card (Date objects). Cards created before FSRS was introduced won't
+// have these fields yet - initialize them fresh but keep the card's
+// existing due date so upgrading doesn't suddenly dump everyone's whole
+// deck into "due today".
+function toFsrsCard(card) {
+  if (card.state !== undefined) {
+    return {
+      due: new Date(card.dueDate),
+      stability: card.stability,
+      difficulty: card.difficulty,
+      elapsed_days: card.elapsed_days,
+      scheduled_days: card.scheduled_days,
+      learning_steps: card.learning_steps,
+      reps: card.reps,
+      lapses: card.lapses,
+      state: card.state,
+      last_review: card.last_review ? new Date(card.last_review) : undefined,
+    };
+  }
+  const empty = createEmptyCard();
+  return { ...empty, due: new Date(card.dueDate ?? Date.now()) };
+}
+
+// Fresh FSRS state for a brand-new card.
+export function createNewCardFields() {
+  return fromFsrsCard(createEmptyCard());
+}
+
+export function isNewCard(card) {
+  return card.state === undefined || card.state === State.New;
+}
 
 export function schedule(card, grade) {
-  const quality = QUALITY[grade];
-  let { ease, interval, repetitions } = card;
-
-  if (quality < 3) {
-    repetitions = 0;
-    interval = 1;
-  } else {
-    if (repetitions === 0) {
-      interval = 1;
-    } else if (repetitions === 1) {
-      interval = 6;
-    } else {
-      interval = Math.round(interval * ease);
-    }
-    repetitions += 1;
-  }
-
-  ease = ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-  if (ease < MIN_EASE) ease = MIN_EASE;
-
-  const dueDate = Date.now() + interval * DAY_MS;
-
-  return { ...card, ease, interval, repetitions, dueDate, lastReviewed: Date.now() };
+  const fsrsCard = toFsrsCard(card);
+  const result = scheduler.next(fsrsCard, new Date(), RATING[grade]);
+  return { ...card, ...fromFsrsCard(result.card) };
 }

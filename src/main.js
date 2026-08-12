@@ -9,6 +9,7 @@ import { renderDictEntry } from './views/dictEntry.js';
 import { renderDictCompare } from './views/dictCompare.js';
 import { renderUsageCheck } from './views/usageCheck.js';
 import { renderYoutubeCapture } from './views/youtubeCapture.js';
+import { renderSettings } from './views/settings.js';
 import { initAnnouncer } from './a11y.js';
 
 const app = document.getElementById('app');
@@ -21,6 +22,8 @@ async function router() {
     await renderDeckList(app);
   } else if (parts[0] === 'install') {
     renderInstall(app);
+  } else if (parts[0] === 'settings') {
+    renderSettings(app);
   } else if (parts[0] === 'dict' && parts[1] === 'word' && parts[2]) {
     await renderDictEntry(app, parts[2]);
   } else if (parts[0] === 'dict' && parts[1] === 'compare') {

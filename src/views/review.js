@@ -1,12 +1,40 @@
 import { getDueCards, updateCard, logReview, getDeck } from '../db.js';
-import { schedule } from '../srs.js';
+import { schedule, isNewCard } from '../srs.js';
 import { announce, focusElement } from '../a11y.js';
 import { t } from '../strings.js';
 import { navButton } from '../nav.js';
+import { getDailyLimits, getTodaySeen, recordSeen } from '../dailyLimitStore.js';
+
+// Applies Anki-style daily caps: only let in as many new/review cards as
+// today's limits still allow, on top of whatever's already been reviewed
+// today (across earlier sessions). Doesn't change what's "due" - just how
+// much of it gets shown today.
+function applyDailyLimits(dueCards) {
+  const limits = getDailyLimits();
+  const seen = getTodaySeen();
+  const newBudget = Math.max(0, limits.newPerDay - seen.newSeen);
+  const reviewBudget = Math.max(0, limits.reviewsPerDay - seen.reviewsSeen);
+
+  const queue = [];
+  let newUsed = 0;
+  let reviewUsed = 0;
+  for (const card of dueCards) {
+    if (isNewCard(card)) {
+      if (newUsed >= newBudget) continue;
+      newUsed++;
+    } else {
+      if (reviewUsed >= reviewBudget) continue;
+      reviewUsed++;
+    }
+    queue.push(card);
+  }
+  return queue;
+}
 
 export async function renderReview(container, deckId) {
   const deck = await getDeck(deckId);
-  const queue = await getDueCards(deckId);
+  const dueCards = await getDueCards(deckId);
+  const queue = applyDailyLimits(dueCards);
   const total = queue.length;
   let reviewed = 0;
   let showingAnswer = false;
@@ -131,6 +159,7 @@ export async function renderReview(container, deckId) {
         btn.className = 'grade-button';
         btn.textContent = g.label;
         btn.addEventListener('click', async () => {
+          recordSeen(isNewCard(card));
           const updated = schedule(card, g.key);
           await updateCard(updated);
           await logReview(card.id, g.key);

@@ -1,4 +1,5 @@
 import { openDB } from 'idb';
+import { createNewCardFields } from './srs.js';
 
 const DB_NAME = 'cardwise';
 const DB_VERSION = 1;
@@ -74,10 +75,7 @@ export async function createCard({ deckId, front, back, example, sourceUrl }) {
     back,
     example: example || '',
     sourceUrl: sourceUrl || '',
-    ease: 2.5,
-    interval: 0,
-    repetitions: 0,
-    dueDate: Date.now(),
+    ...createNewCardFields(),
     createdAt: Date.now(),
   };
   await db.put('cards', card);

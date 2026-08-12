@@ -19,46 +19,74 @@ export async function renderDeckList(container) {
 
   const installBtn = navButton('#/install', t.home.installLink, 'install-link');
   const dictBtn = navButton('#/dict', t.home.dictLink, 'install-link');
+  const settingsBtn = navButton('#/settings', t.home.settingsLink, 'install-link');
 
-  navRow.append(installBtn, dictBtn);
+  navRow.append(installBtn, dictBtn, settingsBtn);
   main.appendChild(navRow);
 
-  const formHeading = document.createElement('h2');
-  formHeading.textContent = t.home.createDeckHeading;
-  main.appendChild(formHeading);
+  const createSection = document.createElement('div');
+  main.appendChild(createSection);
 
-  const form = document.createElement('form');
-  form.setAttribute('aria-label', t.home.createDeckAriaLabel);
+  function showCreateButton() {
+    createSection.innerHTML = '';
+    const showBtn = document.createElement('button');
+    showBtn.type = 'button';
+    showBtn.textContent = t.home.showCreateDeck;
+    showBtn.addEventListener('click', showCreateForm);
+    createSection.appendChild(showBtn);
+  }
 
-  const label = document.createElement('label');
-  label.setAttribute('for', 'new-deck-name');
-  label.textContent = t.deckNameLabel;
+  function showCreateForm() {
+    createSection.innerHTML = '';
 
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.id = 'new-deck-name';
-  input.name = 'deckName';
-  input.required = true;
-  input.autocomplete = 'off';
+    const formHeading = document.createElement('h2');
+    formHeading.textContent = t.home.createDeckHeading;
+    createSection.appendChild(formHeading);
 
-  const submit = document.createElement('button');
-  submit.type = 'submit';
-  submit.className = 'button-primary';
-  submit.textContent = t.home.createDeckButton;
+    const form = document.createElement('form');
+    form.setAttribute('aria-label', t.home.createDeckAriaLabel);
 
-  form.append(label, input, submit);
+    const label = document.createElement('label');
+    label.setAttribute('for', 'new-deck-name');
+    label.textContent = t.deckNameLabel;
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = input.value.trim();
-    if (!name) return;
-    await createDeck(name);
-    announce(t.home.deckCreated(name));
-    await renderDeckList(container);
-    document.getElementById('new-deck-name')?.focus();
-  });
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'new-deck-name';
+    input.name = 'deckName';
+    input.required = true;
+    input.autocomplete = 'off';
 
-  main.appendChild(form);
+    const actionsRow = document.createElement('div');
+    actionsRow.className = 'action-row';
+
+    const submit = document.createElement('button');
+    submit.type = 'submit';
+    submit.className = 'button-primary';
+    submit.textContent = t.home.createDeckButton;
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.textContent = t.home.cancelCreateDeck;
+    cancelBtn.addEventListener('click', showCreateButton);
+
+    actionsRow.append(submit, cancelBtn);
+    form.append(label, input, actionsRow);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = input.value.trim();
+      if (!name) return;
+      await createDeck(name);
+      announce(t.home.deckCreated(name));
+      await renderDeckList(container);
+    });
+
+    createSection.appendChild(form);
+    focusElement(input);
+  }
+
+  showCreateButton();
 
   const listHeading = document.createElement('h2');
   listHeading.textContent = t.home.decksHeading;

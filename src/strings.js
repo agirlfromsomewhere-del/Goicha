@@ -17,13 +17,29 @@ export const t = {
     title: appName,
     installLink: 'How to install this app on your iPhone',
     dictLink: 'Look up a word in the dictionary',
+    settingsLink: 'Settings',
+    showCreateDeck: 'Create a new deck',
+    cancelCreateDeck: 'Cancel',
     createDeckHeading: 'Create a new deck',
     createDeckAriaLabel: 'Create a new deck',
     createDeckButton: 'Create deck',
     deckCreated: (name) => `Deck "${name}" created`,
     decksHeading: 'Your decks',
-    noDecks: 'No decks yet. Create one above to get started.',
+    noDecks: 'No decks yet. Tap "Create a new deck" above to get started.',
     deckMeta: (cardCount, dueCount) => `${pluralCard(cardCount)}, ${dueCount} due`,
+  },
+
+  // Settings
+  settings: {
+    backToDecks: '← All decks',
+    heading: 'Settings',
+    reviewLimitsHeading: 'Daily review limits',
+    reviewLimitsIntro:
+      "Caps how many new cards and review cards you'll see per day, same idea as Anki's daily limits. Doesn't affect scheduling, just how much is shown in one day - anything past the cap is simply due the next day instead.",
+    newPerDayLabel: 'New cards per day',
+    reviewsPerDayLabel: 'Review cards per day',
+    saveButton: 'Save settings',
+    saved: 'Settings saved.',
   },
 
   // Deck detail
