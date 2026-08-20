@@ -163,8 +163,10 @@ export const t = {
     goToDecks: 'Go to decks',
     createCardButton: 'Create flashcard',
     findingExamples: 'Looking for real usage examples on YouTube...',
-    findingExamplesProgress: (done, total, matchCount) =>
-      `Checked ${done} of ${total} videos, found ${matchCount} example${matchCount === 1 ? '' : 's'} so far...`,
+    findingExamplesProgress: (done, matchCount) =>
+      `Checked ${done} video${done === 1 ? '' : 's'}, found ${matchCount} example${matchCount === 1 ? '' : 's'} so far...`,
+    stopFindingExamples: 'Stop looking for examples',
+    stoppingSearch: 'Stopping search, creating card...',
     cardCreated: (word) => `Flashcard created for ${word}.`,
   },
 

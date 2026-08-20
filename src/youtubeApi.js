@@ -200,7 +200,7 @@ async function getTopLevelComments(videoId, apiKey, maxResults) {
 export async function checkPhraseUsage(
   phrase,
   apiKey,
-  { maxCommentsPerVideo = 100, targetMatches = 10, onProgress } = {}
+  { maxCommentsPerVideo = 100, targetMatches = 10, onProgress, signal } = {}
 ) {
   const popularStream = createStream((pageToken) => popularPage(apiKey, pageToken));
   const categoryStreams = DISCOVERY_CATEGORIES.map((id) => createStream((pageToken) => categoryPage(apiKey, id, pageToken)));
@@ -243,12 +243,18 @@ export async function checkPhraseUsage(
         }
         if (onProgress) onProgress(videosChecked, matches.length, round);
       },
-      () => matches.length >= targetMatches || quotaExceeded
+      () => matches.length >= targetMatches || quotaExceeded || !!signal?.aborted
     );
   }
 
   try {
-    while (matches.length < targetMatches && round < MAX_ROUNDS && videosChecked < MAX_VIDEOS_CHECKED && !quotaExceeded) {
+    while (
+      matches.length < targetMatches &&
+      round < MAX_ROUNDS &&
+      videosChecked < MAX_VIDEOS_CHECKED &&
+      !quotaExceeded &&
+      !signal?.aborted
+    ) {
       round++;
       // Round 1: cast the widest net. Later rounds: drop the generic
       // category streams (already gave their initial breadth) and only
@@ -270,7 +276,7 @@ export async function checkPhraseUsage(
         }
       }
 
-      if (newVideos.length > 0) await checkBatch(newVideos);
+      if (newVideos.length > 0 && !signal?.aborted) await checkBatch(newVideos);
     }
   } catch (err) {
     if (isQuotaError(err)) quotaExceeded = true;
@@ -283,5 +289,6 @@ export async function checkPhraseUsage(
     videosFound: seen.size,
     reachedTarget: matches.length >= targetMatches,
     quotaExceeded,
+    cancelled: !!signal?.aborted,
   };
 }

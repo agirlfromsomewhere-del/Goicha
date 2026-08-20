@@ -153,7 +153,7 @@ function buildDefinitionsText(entry) {
 
 // The dictionary already carries at most one example per sense (see
 // build-dict.mjs) - used to fill in when a YouTube search isn't available
-// or doesn't turn up all 3 requested examples.
+// or doesn't turn up both requested examples.
 function collectDictionaryExamples(entry, limit) {
   const examples = [];
   for (const group of entry.entries) {
@@ -219,25 +219,46 @@ async function buildAddCardSection(entry) {
 
     const apiKey = getYoutubeApiKey();
     let examples = [];
+    let stopped = false;
 
     if (apiKey) {
       status.textContent = t.dictEntry.findingExamples;
       announce(t.dictEntry.findingExamples);
+
+      const controller = new AbortController();
+      const stopBtn = document.createElement('button');
+      stopBtn.type = 'button';
+      stopBtn.className = 'button-secondary';
+      stopBtn.textContent = t.dictEntry.stopFindingExamples;
+      stopBtn.addEventListener('click', () => {
+        controller.abort();
+        stopBtn.disabled = true;
+        status.textContent = t.dictEntry.stoppingSearch;
+        announce(t.dictEntry.stoppingSearch);
+      });
+      status.insertAdjacentElement('afterend', stopBtn);
+
       try {
         const result = await checkPhraseUsage(entry.word, apiKey, {
-          targetMatches: 3,
-          onProgress: (done, total, matchCount) => {
-            status.textContent = t.dictEntry.findingExamplesProgress(done, total, matchCount);
+          targetMatches: 2,
+          signal: controller.signal,
+          onProgress: (done, matchCount) => {
+            if (!controller.signal.aborted) {
+              status.textContent = t.dictEntry.findingExamplesProgress(done, matchCount);
+            }
           },
         });
-        examples = result.matches.slice(0, 3).map((m) => m.text);
+        examples = result.matches.slice(0, 2).map((m) => m.text);
+        stopped = result.cancelled;
       } catch {
         // Fall through to dictionary-only examples below.
+      } finally {
+        stopBtn.remove();
       }
     }
 
-    if (examples.length < 3) {
-      examples = examples.concat(collectDictionaryExamples(entry, 3 - examples.length));
+    if (!stopped && examples.length < 2) {
+      examples = examples.concat(collectDictionaryExamples(entry, 2 - examples.length));
     }
 
     const front = entry.word;
