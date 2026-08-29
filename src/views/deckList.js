@@ -1,10 +1,16 @@
-import { getDecks, createDeck, getCardsByDeck, getDueCards, bulkCreateCards } from '../db.js';
+import { getDecks, createDeck, getCardsByDeck, getDueCards } from '../db.js';
 import { announce, focusElement } from '../a11y.js';
 import { t } from '../strings.js';
 import { navButton } from '../nav.js';
+import { syncVocabulary } from '../vocabSync.js';
 
 export async function renderDeckList(container) {
   container.innerHTML = '';
+
+  // Best-effort, silent: pulls in any newly-processed known words / pending
+  // cards since last time this device was opened. Never blocks rendering -
+  // if it's offline or the data files aren't reachable, this just no-ops.
+  syncVocabulary().catch(() => {});
 
   const main = document.createElement('main');
   main.id = 'main';
@@ -19,54 +25,11 @@ export async function renderDeckList(container) {
 
   const installBtn = navButton('#/install', t.home.installLink, 'install-link');
   const dictBtn = navButton('#/dict', t.home.dictLink, 'install-link');
+  const progressBtn = navButton('#/vocab-progress', t.home.progressLink, 'install-link');
   const settingsBtn = navButton('#/settings', t.home.settingsLink, 'install-link');
 
-  navRow.append(installBtn, dictBtn, settingsBtn);
+  navRow.append(installBtn, dictBtn, progressBtn, settingsBtn);
   main.appendChild(navRow);
-
-  const importSection = document.createElement('div');
-  main.appendChild(importSection);
-
-  function showImportButton() {
-    importSection.innerHTML = '';
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = t.home.importVocabButton;
-    btn.addEventListener('click', () => runImport(btn));
-    importSection.appendChild(btn);
-  }
-
-  async function runImport(btn) {
-    const status = document.createElement('p');
-    status.className = 'progress';
-    importSection.innerHTML = '';
-    importSection.appendChild(status);
-
-    const existing = (await getDecks()).find((d) => d.name === t.home.vocabDeckName);
-    if (existing) {
-      status.textContent = t.home.vocabAlreadyImported;
-      announce(t.home.vocabAlreadyImported);
-      window.location.hash = `#/deck/${existing.id}`;
-      return;
-    }
-
-    status.textContent = t.home.importingVocab;
-    announce(t.home.importingVocab);
-
-    const res = await fetch('vocab-30k.json');
-    const items = await res.json();
-    const deck = await createDeck(t.home.vocabDeckName);
-    await bulkCreateCards(
-      deck.id,
-      items.map((it) => ({ front: it.reading, back: it.definition })),
-    );
-
-    status.textContent = t.home.importedVocab(items.length);
-    announce(t.home.importedVocab(items.length));
-    await renderDeckList(container);
-  }
-
-  showImportButton();
 
   const createSection = document.createElement('div');
   main.appendChild(createSection);

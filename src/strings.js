@@ -27,11 +27,19 @@ export const t = {
     decksHeading: 'Your decks',
     noDecks: 'No decks yet. Tap "Create a new deck" above to get started.',
     deckMeta: (cardCount, dueCount) => `${pluralCard(cardCount)}, ${dueCount} due`,
-    vocabDeckName: '30k Vocabulary (beyond N2)',
-    importVocabButton: 'Import 30k vocabulary list as a new deck',
-    importingVocab: 'Importing 30,000 cards - this can take a moment...',
-    importedVocab: (n) => `Imported ${n} cards into "${t.home.vocabDeckName}".`,
-    vocabAlreadyImported: 'Already imported - opening the existing deck.',
+    progressLink: 'Vocabulary progress',
+  },
+
+  // Vocabulary progress
+  vocabProgress: {
+    heading: 'Vocabulary progress',
+    knownCount: (n) => `${n.toLocaleString()} words known`,
+    goalProgress: (n, goal) => `${((n / goal) * 100).toFixed(1)}% of your ${goal.toLocaleString()}-word goal`,
+    daysRemaining: (days) => (days > 0 ? `${days} days left until March 4, 2027` : 'Target date has passed'),
+    pendingHeading: 'Reported unknown words',
+    pendingIntro: 'Words you flagged as unknown while watching/reading become real study cards here.',
+    goToPendingDeck: 'Review these words',
+    noPending: 'None yet - report an unknown word next time you tell me what you watched or read.',
   },
 
   // Settings
