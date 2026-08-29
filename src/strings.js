@@ -27,6 +27,11 @@ export const t = {
     decksHeading: 'Your decks',
     noDecks: 'No decks yet. Tap "Create a new deck" above to get started.',
     deckMeta: (cardCount, dueCount) => `${pluralCard(cardCount)}, ${dueCount} due`,
+    vocabDeckName: '30k Vocabulary (beyond N2)',
+    importVocabButton: 'Import 30k vocabulary list as a new deck',
+    importingVocab: 'Importing 30,000 cards - this can take a moment...',
+    importedVocab: (n) => `Imported ${n} cards into "${t.home.vocabDeckName}".`,
+    vocabAlreadyImported: 'Already imported - opening the existing deck.',
   },
 
   // Settings

@@ -97,6 +97,29 @@ export async function deleteCard(id) {
   await db.delete('cards', id);
 }
 
+// Bulk import: one shared transaction for the whole batch instead of
+// createCard()'s one-transaction-per-card, which would be far too slow for
+// an import of thousands of cards at once.
+export async function bulkCreateCards(deckId, items) {
+  const db = await initDB();
+  const tx = db.transaction('cards', 'readwrite');
+  const now = Date.now();
+  for (const { front, back, example, sourceUrl } of items) {
+    const card = {
+      id: uid(),
+      deckId,
+      front,
+      back,
+      example: example || '',
+      sourceUrl: sourceUrl || '',
+      ...createNewCardFields(),
+      createdAt: now,
+    };
+    tx.store.put(card);
+  }
+  await tx.done;
+}
+
 export async function getCardsByDeck(deckId) {
   const db = await initDB();
   const cards = await db.getAllFromIndex('cards', 'byDeck', deckId);

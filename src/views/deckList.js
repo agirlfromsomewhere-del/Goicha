@@ -1,4 +1,4 @@
-import { getDecks, createDeck, getCardsByDeck, getDueCards } from '../db.js';
+import { getDecks, createDeck, getCardsByDeck, getDueCards, bulkCreateCards } from '../db.js';
 import { announce, focusElement } from '../a11y.js';
 import { t } from '../strings.js';
 import { navButton } from '../nav.js';
@@ -23,6 +23,50 @@ export async function renderDeckList(container) {
 
   navRow.append(installBtn, dictBtn, settingsBtn);
   main.appendChild(navRow);
+
+  const importSection = document.createElement('div');
+  main.appendChild(importSection);
+
+  function showImportButton() {
+    importSection.innerHTML = '';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = t.home.importVocabButton;
+    btn.addEventListener('click', () => runImport(btn));
+    importSection.appendChild(btn);
+  }
+
+  async function runImport(btn) {
+    const status = document.createElement('p');
+    status.className = 'progress';
+    importSection.innerHTML = '';
+    importSection.appendChild(status);
+
+    const existing = (await getDecks()).find((d) => d.name === t.home.vocabDeckName);
+    if (existing) {
+      status.textContent = t.home.vocabAlreadyImported;
+      announce(t.home.vocabAlreadyImported);
+      window.location.hash = `#/deck/${existing.id}`;
+      return;
+    }
+
+    status.textContent = t.home.importingVocab;
+    announce(t.home.importingVocab);
+
+    const res = await fetch('vocab-30k.json');
+    const items = await res.json();
+    const deck = await createDeck(t.home.vocabDeckName);
+    await bulkCreateCards(
+      deck.id,
+      items.map((it) => ({ front: it.reading, back: it.definition })),
+    );
+
+    status.textContent = t.home.importedVocab(items.length);
+    announce(t.home.importedVocab(items.length));
+    await renderDeckList(container);
+  }
+
+  showImportButton();
 
   const createSection = document.createElement('div');
   main.appendChild(createSection);
