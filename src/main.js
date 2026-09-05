@@ -10,7 +10,6 @@ import { renderDictCompare } from './views/dictCompare.js';
 import { renderUsageCheck } from './views/usageCheck.js';
 import { renderYoutubeCapture } from './views/youtubeCapture.js';
 import { renderSettings } from './views/settings.js';
-import { renderVocabProgress } from './views/vocabProgress.js';
 import { initAnnouncer } from './a11y.js';
 
 const app = document.getElementById('app');
@@ -25,8 +24,6 @@ async function router() {
     renderInstall(app);
   } else if (parts[0] === 'settings') {
     renderSettings(app);
-  } else if (parts[0] === 'vocab-progress') {
-    await renderVocabProgress(app);
   } else if (parts[0] === 'dict' && parts[1] === 'word' && parts[2]) {
     await renderDictEntry(app, parts[2]);
   } else if (parts[0] === 'dict' && parts[1] === 'compare') {

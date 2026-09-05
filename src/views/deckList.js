@@ -25,10 +25,9 @@ export async function renderDeckList(container) {
 
   const installBtn = navButton('#/install', t.home.installLink, 'install-link');
   const dictBtn = navButton('#/dict', t.home.dictLink, 'install-link');
-  const progressBtn = navButton('#/vocab-progress', t.home.progressLink, 'install-link');
   const settingsBtn = navButton('#/settings', t.home.settingsLink, 'install-link');
 
-  navRow.append(installBtn, dictBtn, progressBtn, settingsBtn);
+  navRow.append(installBtn, dictBtn, settingsBtn);
   main.appendChild(navRow);
 
   const createSection = document.createElement('div');

@@ -27,19 +27,6 @@ export const t = {
     decksHeading: 'Your decks',
     noDecks: 'No decks yet. Tap "Create a new deck" above to get started.',
     deckMeta: (cardCount, dueCount) => `${pluralCard(cardCount)}, ${dueCount} due`,
-    progressLink: 'Vocabulary progress',
-  },
-
-  // Vocabulary progress
-  vocabProgress: {
-    heading: 'Vocabulary progress',
-    knownCount: (n) => `${n.toLocaleString()} words known`,
-    goalProgress: (n, goal) => `${((n / goal) * 100).toFixed(1)}% of your ${goal.toLocaleString()}-word goal`,
-    daysRemaining: (days) => (days > 0 ? `${days} days left until March 4, 2027` : 'Target date has passed'),
-    pendingHeading: 'Reported unknown words',
-    pendingIntro: 'Words you flagged as unknown while watching/reading become real study cards here.',
-    goToPendingDeck: 'Review these words',
-    noPending: 'None yet - report an unknown word next time you tell me what you watched or read.',
   },
 
   // Settings
