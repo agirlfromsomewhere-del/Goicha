@@ -49,7 +49,7 @@ export async function syncVocabulary() {
       const deck = await getOrCreatePendingDeck();
       await upsertCardsById(
         deck.id,
-        newEntries.map((it) => ({ id: `vocab-${it.word}`, front: it.reading, back: it.definition })),
+        newEntries.map((it) => ({ id: `vocab-${it.word}`, front: `${it.word}（${it.reading}）`, back: it.definition })),
       );
       result.newPendingCards = newEntries.length;
       localStorage.setItem(PENDING_COUNT_KEY, String(pendingCards.length));
