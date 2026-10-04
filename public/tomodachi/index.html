@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tomodachi Call</title>
+<style>
+  :root { color-scheme: light dark; --bg: #ffffff; --fg: #111111; --accent: #0b5cad; --danger: #a4161a; --border: #767676; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121212; --fg: #f2f2f2; --accent: #7db7ff; --danger: #ff8a8a; --border: #9a9a9a; }
+  }
+  body { background: var(--bg); color: var(--fg); font: 1.125rem/1.6 system-ui, sans-serif; max-width: 42rem; margin: 0 auto; padding: 1rem; }
+  h1 { font-size: 1.75rem; margin: 0.5rem 0; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; }
+  label { display: block; margin-top: 1rem; font-weight: 600; }
+  input[type=text], input[type=password], select { font: inherit; width: 100%; box-sizing: border-box; padding: 0.5rem; border: 2px solid var(--border); border-radius: 0.375rem; background: var(--bg); color: var(--fg); }
+  button { font: inherit; font-weight: 700; padding: 0.75rem 1.25rem; margin: 1rem 0.5rem 0 0; border: 2px solid var(--accent); border-radius: 0.375rem; background: var(--accent); color: var(--bg); cursor: pointer; }
+  button.secondary { background: var(--bg); color: var(--accent); }
+  button[disabled] { opacity: 0.5; cursor: not-allowed; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  #status { margin-top: 1rem; padding: 0.75rem; border-left: 4px solid var(--accent); font-weight: 600; }
+  #error { color: var(--danger); font-weight: 600; }
+  .hint { font-size: 1rem; font-weight: 400; margin: 0.25rem 0 0; }
+  details { margin-top: 1.5rem; }
+  ol { padding-left: 1.5rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Tomodachi Call</h1>
+  <p>A hands-free voice call with a Japanese friend. Press Start call, then just talk. Headphones are recommended so your screen reader is not picked up by the microphone.</p>
+
+  <button id="callBtn" type="button">Start call</button>
+  <button id="muteBtn" type="button" class="secondary" aria-pressed="false" disabled>Mute microphone</button>
+  <p id="status" role="status" aria-live="polite">Ready.</p>
+  <p id="error" role="alert"></p>
+
+  <h2>Settings</h2>
+  <label for="voice">Friend's voice</label>
+  <select id="voice">
+    <option value="Aoede">Aoede, female, breezy</option>
+    <option value="Leda">Leda, female, youthful</option>
+    <option value="Sulafat">Sulafat, female, warm</option>
+    <option value="Callirrhoe">Callirrhoe, female, easy-going</option>
+    <option value="Zephyr">Zephyr, female, bright</option>
+    <option value="Kore">Kore, female, firm</option>
+    <option value="Gacrux">Gacrux, female, mature</option>
+    <option value="Puck">Puck, male, upbeat</option>
+    <option value="Achird">Achird, male, friendly</option>
+    <option value="Zubenelgenubi">Zubenelgenubi, male, casual</option>
+    <option value="Umbriel">Umbriel, male, easy-going</option>
+    <option value="Algieba">Algieba, male, smooth</option>
+    <option value="Charon">Charon, male, informative</option>
+    <option value="Algenib">Algenib, male, gravelly</option>
+  </select>
+
+  <label for="style">How your friend talks</label>
+  <select id="style">
+    <option value="casual">Casual, tameguchi</option>
+    <option value="polite">Polite, desu and masu</option>
+    <option value="kansai">Casual, Kansai dialect</option>
+  </select>
+
+  <label for="topic">Topic for this call (optional)</label>
+  <input id="topic" type="text" autocomplete="off" aria-describedby="topicHint">
+  <p id="topicHint" class="hint">Leave empty and your friend will pick something. You can write in English or Japanese.</p>
+
+  <label for="key">Google AI Studio key</label>
+  <input id="key" type="password" autocomplete="off" aria-describedby="keyHint">
+  <p id="keyHint" class="hint">Paste it once. It is saved only in this browser on this computer.</p>
+
+  <details>
+    <summary>Advanced</summary>
+    <label for="model">Model name</label>
+    <input id="model" type="text" autocomplete="off" aria-describedby="modelHint">
+    <p id="modelHint" class="hint">Only change this if calls stop working because Google renamed the model.</p>
+  </details>
+
+  <h2>Transcript of this call</h2>
+  <p class="hint">Not read out during the call. Contains kanji, so it is best reviewed with speech.</p>
+  <ol id="transcript"></ol>
+</main>
+
+<script>
+(() => {
+  const WS_URL = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
+  const DEFAULT_MODEL = 'gemini-3.8-live';
+  const OUT_RATE = 24000;
+  const MAX_RETRIES = 3;
+
+  const $ = id => document.getElementById(id);
+  const callBtn = $('callBtn'), muteBtn = $('muteBtn'), statusEl = $('status'), errorEl = $('error'), transcriptEl = $('transcript');
+  const fields = { voice: $('voice'), style: $('style'), topic: $('topic'), key: $('key'), model: $('model') };
+
+  // Remember settings between visits
+  for (const [name, el] of Object.entries(fields)) {
+    try { const v = localStorage.getItem('tc_' + name); if (v !== null) el.value = v; } catch (e) {}
+    el.addEventListener('change', () => { try { localStorage.setItem('tc_' + name, el.value); } catch (e) {} });
+  }
+  if (!fields.model.value) fields.model.value = DEFAULT_MODEL;
+
+  const STYLES = {
+    casual: '話し方は標準語のタメ口。親しい友達同士のくだけた口調で話す。',
+    polite: '話し方はです・ます調。ただし堅苦しくならず、親しみのある丁寧さで話す。',
+    kansai: '話し方は関西弁のタメ口。自然な大阪の友達のように話す。'
+  };
+
+  function buildInstruction() {
+    const topic = fields.topic.value.trim();
+    return [
+      'あなたは日本で生まれ育った日本語ネイティブで、ユーザーの気の置けない友達です。これは友達同士の電話です。',
+      STYLES[fields.style.value] || STYLES.casual,
+      '相手は日本語上級者なので、手加減せず、ネイティブ同士と同じ自然な速さ・語彙・言い回しで話す。',
+      'あなたは先生ではない。文法や発音の間違いを直したり、言葉を解説したり、褒めたりしない。相手から頼まれたときだけ教える。',
+      '一回の発言は短く、だいたい一文から三文。長く語らない。電話らしくテンポよくやりとりする。',
+      '相づちを打ち、自分の意見や好み、最近あった出来事などを自分から話し、相手にも質問を返す。意見が違うときは遠慮なく言う。',
+      '話が途切れたら自分から新しい話題を出す。箇条書きや説明口調、アシスタントのような言い方はしない。',
+      '常に日本語だけで話す。相手が他の言語で話しても日本語で返す。',
+      '自分からAIだと言い出して雰囲気を壊さない。ただし本気で聞かれたら正直に答える。',
+      topic ? '今日の話題の希望: ' + topic : '今日の話題は特に決まっていない。'
+    ].join('\n');
+  }
+
+  let call = null;
+
+  function setStatus(msg) { statusEl.textContent = msg; }
+  function setError(msg) { errorEl.textContent = msg; }
+
+  function beep(ctx, freqs) {
+    let t = ctx.currentTime;
+    for (const f of freqs) {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.15, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      o.connect(g).connect(ctx.destination);
+      o.start(t); o.stop(t + 0.2);
+      t += 0.2;
+    }
+  }
+
+  const WORKLET = `
+    class MicProcessor extends AudioWorkletProcessor {
+      constructor() { super(); this.buf = new Int16Array(1600); this.n = 0; }
+      process(inputs) {
+        const ch = inputs[0][0];
+        if (ch) for (let i = 0; i < ch.length; i++) {
+          const s = Math.max(-1, Math.min(1, ch[i]));
+          this.buf[this.n++] = s < 0 ? s * 0x8000 : s * 0x7fff;
+          if (this.n === this.buf.length) { this.port.postMessage(this.buf.slice().buffer); this.n = 0; }
+        }
+        return true;
+      }
+    }
+    registerProcessor('mic-processor', MicProcessor);`;
+
+  function toBase64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let s = '';
+    for (let i = 0; i < bytes.length; i += 0x2000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x2000));
+    return btoa(s);
+  }
+
+  function playChunk(b64) {
+    const bin = atob(b64);
+    const samples = new Float32Array(bin.length >> 1);
+    for (let i = 0; i < samples.length; i++) {
+      let v = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8);
+      if (v >= 0x8000) v -= 0x10000;
+      samples[i] = v / 0x8000;
+    }
+    const ctx = call.outCtx;
+    const buf = ctx.createBuffer(1, samples.length, OUT_RATE);
+    buf.copyToChannel(samples, 0);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    call.nextTime = Math.max(call.nextTime, ctx.currentTime + 0.05);
+    src.start(call.nextTime);
+    call.nextTime += buf.duration;
+    call.sources.add(src);
+    src.onended = () => call && call.sources.delete(src);
+  }
+
+  function stopPlayback() {
+    for (const s of call.sources) { try { s.stop(); } catch (e) {} }
+    call.sources.clear();
+    call.nextTime = 0;
+  }
+
+  function flushLine(who) {
+    const text = call.lines[who].trim();
+    call.lines[who] = '';
+    if (!text) return;
+    const li = document.createElement('li');
+    const span = document.createElement('span');
+    span.lang = 'ja';
+    span.textContent = text;
+    li.append(who === 'you' ? 'You: ' : 'Friend: ', span);
+    transcriptEl.append(li);
+  }
+
+  function onMessage(msg) {
+    if (msg.setupComplete) {
+      call.retries = 0;
+      call.ready = true;
+      if (!call.greeted) {
+        call.greeted = true;
+        beep(call.outCtx, [660, 880]);
+        setStatus('Connected. Your friend is on the line.');
+        call.ws.send(JSON.stringify({ realtimeInput: { text: '(電話がつながった。友達として、あなたから自然に話しかけて会話を始めて。)' } }));
+      }
+      return;
+    }
+    if (msg.sessionResumptionUpdate && msg.sessionResumptionUpdate.resumable && msg.sessionResumptionUpdate.newHandle) {
+      call.handle = msg.sessionResumptionUpdate.newHandle;
+    }
+    const sc = msg.serverContent;
+    if (!sc) return;
+    if (sc.interrupted) stopPlayback();
+    if (sc.inputTranscription && sc.inputTranscription.text) {
+      flushLine('friend');
+      call.lines.you += sc.inputTranscription.text;
+    }
+    if (sc.outputTranscription && sc.outputTranscription.text) {
+      flushLine('you');
+      call.lines.friend += sc.outputTranscription.text;
+    }
+    if (sc.modelTurn && sc.modelTurn.parts) {
+      for (const p of sc.modelTurn.parts) {
+        if (p.inlineData && p.inlineData.data) playChunk(p.inlineData.data);
+      }
+    }
+  }
+
+  function connect() {
+    const model = (fields.model.value.trim() || DEFAULT_MODEL).replace(/^models\//, '');
+    const ws = new WebSocket(WS_URL + '?key=' + encodeURIComponent(fields.key.value.trim()));
+    ws.binaryType = 'arraybuffer';
+    call.ws = ws;
+    call.ready = false;
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        setup: {
+          model: 'models/' + model,
+          generationConfig: {
+            responseModalities: ['AUDIO'],
+            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: fields.voice.value } } }
+          },
+          systemInstruction: { parts: [{ text: buildInstruction() }] },
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
+          contextWindowCompression: { slidingWindow: {} },
+          sessionResumption: call.handle ? { handle: call.handle } : {}
+        }
+      }));
+    };
+    ws.onmessage = ev => {
+      const text = typeof ev.data === 'string' ? ev.data : new TextDecoder().decode(ev.data);
+      let msg;
+      try { msg = JSON.parse(text); } catch (e) { return; }
+      if (call && call.ws === ws) onMessage(msg);
+    };
+    ws.onclose = ev => {
+      if (!call || call.ws !== ws) return;
+      // Google closes the connection about every ten minutes; pick the call back up where it left off
+      if (call.handle && call.retries < MAX_RETRIES) {
+        call.retries++;
+        connect();
+        return;
+      }
+      const reason = ev.reason || ('connection closed, code ' + ev.code);
+      endCall(call.greeted ? 'Call dropped: ' + reason : 'Could not connect: ' + reason);
+    };
+  }
+
+  async function startCall() {
+    setError('');
+    if (!fields.key.value.trim()) {
+      setError('Please paste your Google AI Studio key in Settings first.');
+      fields.key.focus();
+      return;
+    }
+    callBtn.disabled = true;
+    setStatus('Connecting.');
+    transcriptEl.textContent = '';
+    try {
+      // Created inside the click so the browser allows sound
+      const outCtx = new AudioContext({ sampleRate: OUT_RATE });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+      const micCtx = new AudioContext({ sampleRate: 16000 });
+      await outCtx.resume();
+      await micCtx.resume();
+      const url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
+      await micCtx.audioWorklet.addModule(url);
+      URL.revokeObjectURL(url);
+      const node = new AudioWorkletNode(micCtx, 'mic-processor');
+      micCtx.createMediaStreamSource(stream).connect(node);
+      const mimeType = 'audio/pcm;rate=' + micCtx.sampleRate;
+
+      call = { outCtx, micCtx, stream, ws: null, ready: false, greeted: false, muted: false, handle: null, retries: 0, nextTime: 0, sources: new Set(), lines: { you: '', friend: '' } };
+      node.port.onmessage = ev => {
+        if (!call || !call.ready || call.muted || call.ws.readyState !== WebSocket.OPEN) return;
+        call.ws.send(JSON.stringify({ realtimeInput: { audio: { data: toBase64(ev.data), mimeType } } }));
+      };
+      connect();
+      callBtn.textContent = 'End call';
+      muteBtn.disabled = false;
+    } catch (e) {
+      const denied = e && (e.name === 'NotAllowedError' || e.name === 'NotFoundError');
+      setStatus('Ready.');
+      setError(denied ? 'The microphone is not available. Allow microphone access in the browser and try again.' : 'Could not start the call: ' + (e && e.message ? e.message : e));
+      if (call) endCall('');
+    }
+    callBtn.disabled = false;
+  }
+
+  function endCall(errorMsg) {
+    const c = call;
+    if (!c) return;
+    flushLine('you'); flushLine('friend');
+    call = null;
+    try { if (c.ws) c.ws.close(); } catch (e) {}
+    c.stream.getTracks().forEach(t => t.stop());
+    for (const s of c.sources) { try { s.stop(); } catch (e) {} }
+    c.micCtx.close();
+    beep(c.outCtx, [660, 440]);
+    setTimeout(() => c.outCtx.close(), 700);
+    callBtn.textContent = 'Start call';
+    muteBtn.disabled = true;
+    muteBtn.setAttribute('aria-pressed', 'false');
+    setStatus('Call ended.');
+    if (errorMsg) setError(errorMsg);
+  }
+
+  callBtn.addEventListener('click', () => { if (call) endCall(''); else startCall(); });
+  muteBtn.addEventListener('click', () => {
+    if (!call) return;
+    call.muted = !call.muted;
+    muteBtn.setAttribute('aria-pressed', String(call.muted));
+    if (call.muted && call.ws.readyState === WebSocket.OPEN) call.ws.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
+  });
+})();
+</script>
+</body>
+</html>

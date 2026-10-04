@@ -8,8 +8,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Cardwise',
-        short_name: 'Cardwise',
+        name: 'Goicha',
+        short_name: 'Goicha',
         description: 'An accessible flashcard spaced-repetition app for Japanese learners',
         lang: 'en',
         start_url: './',
@@ -27,7 +27,10 @@ export default defineConfig({
         // The dictionary (public/dict/**) is ~20MB, deliberately split into
         // an index + lazily-fetched shards (see src/dict.js). Precaching it
         // here would download the whole thing on install and defeat that.
-        globIgnores: ['**/dict/**'],
+        globIgnores: ['**/dict/**', '**/tomodachi/**'],
+        // Tomodachi Call is a separate page hosted alongside this app; keep
+        // the app-shell fallback from answering for it.
+        navigateFallbackDenylist: [/\/tomodachi\//],
         runtimeCaching: [
           {
             urlPattern: /\/dict\/.*\.json$/,

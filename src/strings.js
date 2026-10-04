@@ -1,7 +1,7 @@
 // Centralized UI text. Every user-facing string in the app lives here so
 // wording can be reviewed and fixed in one place.
 
-export const appName = 'Cardwise';
+export const appName = 'Goicha';
 
 function pluralCard(n) {
   return `${n} card${n === 1 ? '' : 's'}`;
@@ -122,7 +122,7 @@ export const t = {
   install: {
     heading: 'Install on your iPhone',
     intro:
-      "Adding Cardwise to your Home Screen lets it open like a regular app, full-screen, with its own icon, and it keeps working without a live internet connection.",
+      "Adding Goicha to your Home Screen lets it open like a regular app, full-screen, with its own icon, and it keeps working without a live internet connection.",
     steps: [
       'Open this page in Safari, not Chrome or another browser. Only Safari can add apps to the Home Screen on iPhone.',
       'Tap the Share button, the square with an arrow pointing up, usually at the bottom of the screen.',
