@@ -30,7 +30,7 @@ export default defineConfig({
         globIgnores: ['**/dict/**', '**/tomodachi/**'],
         // Tomodachi Call is a separate page hosted alongside this app; keep
         // the app-shell fallback from answering for it.
-        navigateFallbackDenylist: [/\/tomodachi\//],
+        navigateFallbackDenylist: [/\/tomodachi/],
         runtimeCaching: [
           {
             urlPattern: /\/dict\/.*\.json$/,

@@ -27,7 +27,13 @@ export async function renderDeckList(container) {
   const dictBtn = navButton('#/dict', t.home.dictLink, 'install-link');
   const settingsBtn = navButton('#/settings', t.home.settingsLink, 'install-link');
 
-  navRow.append(installBtn, dictBtn, settingsBtn);
+  // Tomodachi Call is a separate page hosted next to the app, so a real link
+  const callLink = document.createElement('a');
+  callLink.href = 'tomodachi/';
+  callLink.className = 'install-link';
+  callLink.textContent = t.home.callLink;
+
+  navRow.append(installBtn, dictBtn, settingsBtn, callLink);
   main.appendChild(navRow);
 
   const createSection = document.createElement('div');
