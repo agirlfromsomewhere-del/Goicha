@@ -79,6 +79,7 @@
 
 <script>
 (() => {
+  const VOICES_URL = 'https://generativelanguage.googleapis.com/v1beta/voices';
   const WS_URL = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
   const DEFAULT_MODEL = 'gemini-3.8-live';
   const OUT_RATE = 24000;
@@ -111,6 +112,7 @@
       '一回の発言は短く、だいたい一文から三文。長く語らない。電話らしくテンポよくやりとりする。',
       '相づちを打ち、自分の意見や好み、最近あった出来事などを自分から話し、相手にも質問を返す。意見が違うときは遠慮なく言う。',
       '話が途切れたら自分から新しい話題を出す。箇条書きや説明口調、アシスタントのような言い方はしない。',
+      '発音・アクセント・イントネーションは日本で育ったネイティブそのもの。外国語なまりは一切ない。',
       '常に日本語だけで話す。相手が他の言語で話しても日本語で返す。',
       '自分からAIだと言い出して雰囲気を壊さない。ただし本気で聞かれたら正直に答える。',
       topic ? '今日の話題の希望: ' + topic : '今日の話題は特に決まっていない。'
@@ -328,6 +330,39 @@
     setStatus('Call ended.');
     if (errorMsg) setError(errorMsg);
   }
+
+  async function fetchVoices(lang) {
+    const res = await fetch(VOICES_URL + '?page_size=200&language_code=' + lang, { headers: { 'x-goog-api-key': fields.key.value.trim() } });
+    const data = await res.json();
+    if (!res.ok) throw new Error((data && data.error && data.error.message) || res.status);
+    return data.voices || [];
+  }
+
+  // Swap the built-in multilingual voices for Google's Japanese ones
+  async function loadVoices() {
+    if (!fields.key.value.trim()) return;
+    try {
+      let voices = await fetchVoices('ja-JP');
+      if (!voices.length) voices = await fetchVoices('ja');
+      if (!voices.length) throw new Error('none found');
+      let saved = null;
+      try { saved = localStorage.getItem('tc_voice'); } catch (e) {}
+      fields.voice.textContent = '';
+      for (const v of voices) {
+        const id = v.id || v.name;
+        if (!id) continue;
+        const o = document.createElement('option');
+        o.value = id;
+        o.textContent = [v.display_name || v.displayName || id, v.gender].filter(Boolean).join(', ');
+        fields.voice.append(o);
+      }
+      if (saved && [...fields.voice.options].some(o => o.value === saved)) fields.voice.value = saved;
+    } catch (e) {
+      setError('Could not load Japanese voices: ' + (e && e.message ? e.message : e));
+    }
+  }
+  fields.key.addEventListener('change', loadVoices);
+  loadVoices();
 
   callBtn.addEventListener('click', () => { if (call) endCall(''); else startCall(); });
   muteBtn.addEventListener('click', () => {
