@@ -18,7 +18,7 @@ export const t = {
     installLink: 'How to install this app on your iPhone',
     dictLink: 'Look up a word in the dictionary',
     settingsLink: 'Settings',
-    callLink: 'Tomodachi Call, voice chat with a Japanese friend',
+    callLink: 'ともだち Call',
     showCreateDeck: 'Create a new deck',
     cancelCreateDeck: 'Cancel',
     createDeckHeading: 'Create a new deck',

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tomodachi Call</title>
+<title>ともだち Call</title>
 <style>
   :root { color-scheme: light dark; --bg: #ffffff; --fg: #111111; --accent: #0b5cad; --danger: #a4161a; --border: #767676; }
   @media (prefers-color-scheme: dark) {
@@ -27,9 +27,8 @@
 </head>
 <body>
 <main>
-  <h1>Tomodachi Call</h1>
+  <h1><span lang="ja">ともだち</span> Call</h1>
   <p><a href="../">Back to Goicha</a></p>
-  <p>A hands-free voice call with a Japanese friend. Press Start call, then just talk. Headphones are recommended so your screen reader is not picked up by the microphone.</p>
 
   <button id="callBtn" type="button">Start call</button>
   <button id="muteBtn" type="button" class="secondary" aria-pressed="false" disabled>Mute microphone</button>
@@ -39,46 +38,42 @@
   <h2>Settings</h2>
   <label for="voice">Friend's voice</label>
   <select id="voice">
-    <option value="Aoede">Aoede, female, breezy</option>
-    <option value="Leda">Leda, female, youthful</option>
-    <option value="Sulafat">Sulafat, female, warm</option>
-    <option value="Callirrhoe">Callirrhoe, female, easy-going</option>
-    <option value="Zephyr">Zephyr, female, bright</option>
-    <option value="Kore">Kore, female, firm</option>
-    <option value="Gacrux">Gacrux, female, mature</option>
-    <option value="Puck">Puck, male, upbeat</option>
-    <option value="Achird">Achird, male, friendly</option>
-    <option value="Zubenelgenubi">Zubenelgenubi, male, casual</option>
-    <option value="Umbriel">Umbriel, male, easy-going</option>
-    <option value="Algieba">Algieba, male, smooth</option>
-    <option value="Charon">Charon, male, informative</option>
-    <option value="Algenib">Algenib, male, gravelly</option>
+    <option value="Aoede">Aoede, female</option>
+    <option value="Leda">Leda, female</option>
+    <option value="Sulafat">Sulafat, female</option>
+    <option value="Callirrhoe">Callirrhoe, female</option>
+    <option value="Zephyr">Zephyr, female</option>
+    <option value="Kore">Kore, female</option>
+    <option value="Gacrux">Gacrux, female</option>
+    <option value="Puck">Puck, male</option>
+    <option value="Achird">Achird, male</option>
+    <option value="Zubenelgenubi">Zubenelgenubi, male</option>
+    <option value="Umbriel">Umbriel, male</option>
+    <option value="Algieba">Algieba, male</option>
+    <option value="Charon">Charon, male</option>
+    <option value="Algenib">Algenib, male</option>
   </select>
 
   <label for="style">How your friend talks</label>
   <select id="style">
-    <option value="casual">Casual, tameguchi</option>
-    <option value="polite">Polite, desu and masu</option>
-    <option value="kansai">Casual, Kansai dialect</option>
+    <option value="casual" lang="ja">ためぐち</option>
+    <option value="polite" lang="ja">です・ます</option>
+    <option value="kansai" lang="ja">かんさいべん</option>
   </select>
 
-  <label for="topic">Topic for this call (optional)</label>
-  <input id="topic" type="text" autocomplete="off" aria-describedby="topicHint">
-  <p id="topicHint" class="hint">Leave empty and your friend will pick something. You can write in English or Japanese.</p>
+  <label for="topic">Topic</label>
+  <input id="topic" type="text" autocomplete="off">
 
   <label for="key">Google AI Studio key</label>
-  <input id="key" type="password" autocomplete="off" aria-describedby="keyHint">
-  <p id="keyHint" class="hint">Paste it once. It is saved only in this browser on this computer.</p>
+  <input id="key" type="password" autocomplete="off">
 
   <details>
     <summary>Advanced</summary>
     <label for="model">Model name</label>
-    <input id="model" type="text" autocomplete="off" aria-describedby="modelHint">
-    <p id="modelHint" class="hint">Only change this if calls stop working because Google renamed the model.</p>
+    <input id="model" type="text" autocomplete="off">
   </details>
 
   <h2>Transcript of this call</h2>
-  <p class="hint">Not read out during the call. Contains kanji, so it is best reviewed with speech.</p>
   <ol id="transcript"></ol>
 </main>
 
